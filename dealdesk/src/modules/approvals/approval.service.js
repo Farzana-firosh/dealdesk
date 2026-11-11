@@ -104,7 +104,7 @@ async function decide(user, scope, requestId, action, remarks) {
   const updated = await ApprovalRequest.findOneAndUpdate(
     { _id: request._id, status: 'pending', currentStep: current.step },
     { $set: update },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!updated) throw AppError.conflict('This step was already decided');
 

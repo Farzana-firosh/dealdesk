@@ -8,7 +8,7 @@ function startInvoiceJobs() {
   runEvery('push', env.push.pollIntervalMs, runPushCycle);
   runEvery('webhook-sweep', 5000, sweepPendingEvents);
   runEvery('reconcile', env.reconcile.intervalMs, runReconciliation);
-  console.log(`[jobs] push every ${env.push.pollIntervalMs}ms · reconcile every ${env.reconcile.intervalMs}ms (stale after ${env.reconcile.staleMinutes} min)`);
+  console.log(`[jobs] push every ${env.push.pollIntervalMs}ms, reconcile every ${env.reconcile.intervalMs}ms (stale after ${env.reconcile.staleMinutes} min)`);
 }
 
 module.exports = { startInvoiceJobs };

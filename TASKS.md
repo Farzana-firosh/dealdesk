@@ -107,13 +107,19 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
   - [x] Notifications reach only the right users (other-branch manager and later-step finance excluded)
 
 ## Phase 7 – Submission (target 30 min)
-- [ ] Postman collection covering every endpoint
-- [ ] README answering the six required questions
-- [ ] `docker compose up` verified
-- [ ] Screen recording: scenarios 5, 6, 7, 9 (done by you)
-- [ ] Final review of this checklist
+- [x] Postman collection covering every endpoint (`postman/`, 84 requests, 111 assertions – passes via newman locally and against Docker)
+- [x] README answering the six required questions + run instructions, API overview, scenario guide, trade-offs
+- [x] `docker compose up --build` verified: health, seed, full Postman run, container-to-container webhooks
+- [x] Mongoose 9 deprecation (`new: true` → `returnDocument: 'after'`) cleaned up
+- [x] Full regression: phase test scripts 2–6 all pass
+- [ ] Screen recording: scenarios 5, 6, 7, 9 (by candidate)
+- [x] Final review of this checklist
 
 ---
 
 ## Known limitations / pending
-- (filled in as we go)
+- Notifications are live-only (not persisted); pending approvals / invoice status / unread counts remain correct via the API.
+- Invoice cancel is local only (BillPort contract has no cancel endpoint).
+- No in-repo automated test suite (Jest/Supertest); verified with scripts + asserted Postman collection.
+- Plain JavaScript (TypeScript was optional).
+- Standalone MongoDB → no transactions; conditional updates + idempotent/compensating writes instead.

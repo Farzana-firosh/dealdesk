@@ -21,7 +21,7 @@ function claimNext() {
       $or: [{ pushLockedUntil: null }, { pushLockedUntil: { $lt: now } }],
     },
     { $set: { pushLockedUntil: new Date(now.getTime() + LOCK_MS) }, $inc: { pushAttempts: 1 } },
-    { sort: { nextPushAt: 1 }, new: true },
+    { sort: { nextPushAt: 1 }, returnDocument: 'after' },
   );
 }
 

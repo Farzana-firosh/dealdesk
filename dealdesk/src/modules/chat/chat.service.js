@@ -19,7 +19,7 @@ async function ensureThread(dealId) {
   return Thread.findOneAndUpdate(
     { dealId },
     { $setOnInsert: { dealId, participants: userIds.map((userId) => ({ userId })) } },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: 'after' },
   );
 }
 
@@ -88,7 +88,7 @@ async function postMessage(user, dealId, text) {
       },
       $inc: { 'participants.$[other].unreadCount': 1 },
     },
-    { arrayFilters: [{ 'me.userId': user._id }, { 'other.userId': { $ne: user._id } }], new: true },
+    { arrayFilters: [{ 'me.userId': user._id }, { 'other.userId': { $ne: user._id } }], returnDocument: 'after' },
   );
 
   publish(EVENTS.CHAT_MESSAGE, {

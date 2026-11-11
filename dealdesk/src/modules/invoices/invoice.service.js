@@ -89,7 +89,7 @@ async function retryPush(user, scope, id) {
   const invoice = await Invoice.findOneAndUpdate(
     { _id: id, pushStatus: 'failed', ...scopeFilter(user, scope) },
     { pushStatus: 'queued', pushAttempts: 0, nextPushAt: new Date(), pushError: null },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!invoice) throw AppError.conflict('Only invoices whose push has failed can be retried');
   return invoice;
@@ -99,7 +99,7 @@ async function cancelInvoice(user, scope, id) {
   const invoice = await Invoice.findOneAndUpdate(
     { _id: id, status: { $in: ['pending', 'sent', 'viewed'] }, ...scopeFilter(user, scope) },
     { status: 'cancelled', statusUpdatedAt: new Date() },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!invoice) throw AppError.conflict('Invoice not found or already final');
 

@@ -17,7 +17,7 @@ async function advanceStatus(filter, target, extra = {}) {
   const invoice = await Invoice.findOneAndUpdate(
     { ...filter, status: { $in: statusesBelow(target) } },
     { $set: { status: target, statusUpdatedAt: new Date(), ...extra } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!invoice) return null;
 

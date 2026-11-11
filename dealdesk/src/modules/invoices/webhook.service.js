@@ -79,7 +79,7 @@ async function processEvent(id) {
   const eventDoc = await WebhookEvent.findOneAndUpdate(
     { _id: id, state: 'received' },
     { $inc: { attempts: 1 }, $set: { state: 'processing' } },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!eventDoc) return;
 

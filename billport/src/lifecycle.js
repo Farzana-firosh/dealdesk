@@ -41,7 +41,7 @@ async function advanceDueInvoices() {
     const updated = await Invoice.findOneAndUpdate(
       { _id: invoice._id, status: invoice.status },
       { status, $inc: { sequence: 1 }, nextTransitionAt },
-      { new: true },
+      { returnDocument: 'after' },
     );
     if (!updated) continue;
 
@@ -75,7 +75,7 @@ async function sendDueWebhooks() {
     const delivery = await Delivery.findOneAndUpdate(
       { state: 'pending', sendAt: { $lte: new Date() } },
       { state: 'sending' },
-      { sort: { sendAt: 1 }, new: true },
+      { sort: { sendAt: 1 }, returnDocument: 'after' },
     );
     if (!delivery) return;
 
