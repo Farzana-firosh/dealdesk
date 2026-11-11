@@ -10,6 +10,17 @@ DealDesk is a backend for deals, discount approvals, realtime deal chat and invo
 
 Stack: Node.js 20+, Express 5, MongoDB 7 with Mongoose, JWT and bcrypt (`bcryptjs`), Socket.IO, Joi. The code is plain JavaScript (CommonJS) so the solution stays small and readable within the time box.
 
+**This README answers:**
+
+1. [How to run both apps](#1-how-to-run-both-apps)
+2. [How you modelled permissions and data scope](#2-how-you-modelled-permissions-and-data-scope)
+3. [How the approval chain is configured and resolved at runtime](#3-how-the-approval-chain-is-configured-and-resolved-at-runtime)
+4. [How you guaranteed exactly-once invoice creation on BillPort](#4-how-you-guaranteed-exactly-once-invoice-creation-on-billport)
+5. [How you handled duplicate and out-of-order webhooks, and why you chose that rule](#5-how-you-handled-duplicate-and-out-of-order-webhooks-and-why-you-chose-that-rule)
+6. [What you did not finish, and what you would do with another day](#6-what-you-did-not-finish-and-what-you-would-do-with-another-day)
+
+Additional notes on realtime chat, the API and the acceptance scenarios follow after them.
+
 ---
 
 ## 1. How to run both apps
@@ -74,7 +85,7 @@ Controllers stay thin and the business rules live in the services. The UI only *
 
 ---
 
-## 2. Permissions and data scope
+## 2. How you modelled permissions and data scope
 
 **A role is data, and permissions are what the code checks.** A role is a document in the database:
 ```js
@@ -98,7 +109,7 @@ Scenario 01: exec A asking for a Branch B deal by id gets **404**, while finance
 
 ---
 
-## 3. The approval chain: configuration and runtime resolution
+## 3. How the approval chain is configured and resolved at runtime
 
 **Configuration.** One `ApprovalConfig` document holds bands. Each band is `(minPercent, maxPercent] → ordered list of role ids`. The seed loads the assignment's table:
 
@@ -127,7 +138,7 @@ Scenario 01: exec A asking for a Branch B deal by id gets **404**, while finance
 
 ---
 
-## 4. Exactly-once invoice creation on BillPort
+## 4. How you guaranteed exactly-once invoice creation on BillPort
 
 1. **Converting never calls BillPort.** `POST /api/deals/:id/convert` creates the Sale and the Invoice locally and returns 201. The invoice starts with `pushStatus: 'queued'`. Unique indexes on `sale.dealId` and `invoice.saleId` make converting twice a 409.
 2. **The idempotency key is generated once.** It's a UUID created when the invoice is created and stored on the invoice, with a unique index. Every push attempt for that invoice sends the **same** key; it is never regenerated.
@@ -153,7 +164,7 @@ curl -X POST localhost:5000/admin/chaos -H 'Content-Type: application/json' -d '
 
 ---
 
-## 5. Duplicate and out-of-order webhooks
+## 5. How you handled duplicate and out-of-order webhooks, and why you chose that rule
 
 **`POST /webhooks/billport`:**
 1. The route is mounted **before** `express.json()` and uses `express.raw()`. The HMAC-SHA256 of the **raw bytes** is compared with `crypto.timingSafeEqual`. A wrong or missing signature gets **401**: the event is logged and nothing else happens (scenario 08).
@@ -191,7 +202,34 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 
 ---
 
-## 6. Realtime chat and notifications
+## 6. What you did not finish, and what you would do with another day
+
+**Trade-offs made deliberately:**
+- **No multi-document transactions,** because MongoDB runs standalone. Correctness relies on conditional single-document updates (the guard sits in the filter). Where two writes must both happen, the code either makes them idempotent and re-runnable (convert) or compensates (discount request).
+- **Polling workers instead of a queue broker.** The jobs poll MongoDB on an interval, and all their state is in documents with atomic claims and expiring locks. That survives restarts and works with several instances, without adding Redis or a queue.
+- **Two small exceptions to "nothing inline":** the webhook endpoint does one inline insert, for deduplication and durability, before answering 200. Notifications are dispatched in-process with an EventEmitter. They're best-effort, and the durable state (invoice status, approvals, unread counts) is always in MongoDB.
+
+**Not finished:**
+- **Notifications aren't persisted.** A user who's offline misses the live notification, although `GET /approvals/pending`, invoice status and unread counts still show the current state.
+- **Cancelling is local only.** BillPort's contract has no cancel endpoint, so a cancelled invoice ignores later BillPort events.
+- **No automated test suite in the repo.** Workflows were verified with throwaway scripts and the asserted Postman collection, run with Newman, rather than Jest or Supertest.
+- **Plain JavaScript, not TypeScript.**
+
+**With another day:**
+1. A Jest + Supertest + mongodb-memory-server suite covering scope, approval races and webhook ordering, and run in CI.
+2. A persisted `notifications` collection, with a read API and replay on reconnect.
+3. A MongoDB replica set and transactions for convert and for discount requests. A transactional outbox for domain events.
+4. An integration-log retention policy (TTL index) and a small admin view of failed pushes, with bulk retry.
+5. Rate limiting on login and webhooks, plus Helmet and structured logging (pino) with a request id.
+6. Pagination on the list endpoints and a TypeScript migration.
+
+---
+
+# Additional notes
+
+---
+
+## Realtime chat and notifications
 
 - **Threads:** one thread per deal. Participants are the owner and the owner's manager (added when the deal is created), plus anyone who comments. Commenting requires `chat.send` and being able to see the deal.
 - **History** is stored in MongoDB.
@@ -212,7 +250,7 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 
 ---
 
-## 7. API overview
+## API overview
 All `/api` routes except login require `Authorization: Bearer <token>`.
 
 | Area | Endpoints |
@@ -229,7 +267,9 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | BillPort | `POST /billing/invoices`, `GET /billing/invoices/:externalId`, `GET/POST /admin/chaos`, `GET /admin/invoices`, `GET /admin/deliveries` |
 | Socket events | client → `thread:join`, `thread:leave`, `chat:send`, `chat:typing` · server → `chat:message`, `chat:typing`, `thread:updated`, `notification` |
 
-## 8. Acceptance scenarios: how to see each one
+---
+
+## Acceptance scenarios: how to see each one
 | # | How |
 |---|---|
 | 01–03, 06–08 | Postman folders 4–6 (asserted) |
@@ -237,26 +277,3 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | 05 | Stop BillPort (Ctrl+C), convert a won deal → the DealDesk log shows `retry_scheduled_in_2s / 4s / 8s …` → start BillPort → the push succeeds on its own |
 | 06–08 by hand | `cd dealdesk && node scripts/send-webhook.js <externalId> SENT 1 --times 3` · `... PAID 3` then `... VIEWED 2` · `... PAID 3 --tamper` |
 | 09 | `POST localhost:5000/admin/chaos {"webhooksEnabled": false}`, convert a deal → after about N min the log shows `[reconcile] … repaired pending -> paid` |
-
----
-
-## 9. Trade-offs, what is not finished, and what I'd do with another day
-
-**Trade-offs made deliberately:**
-- **No multi-document transactions,** because MongoDB runs standalone. Correctness relies on conditional single-document updates (the guard sits in the filter). Where two writes must both happen, the code either makes them idempotent and re-runnable (convert) or compensates (discount request).
-- **Polling workers instead of a queue broker.** The jobs poll MongoDB on an interval, and all their state is in documents with atomic claims and expiring locks. That survives restarts and works with several instances, without adding Redis or a queue.
-- **Two small exceptions to "nothing inline":** the webhook endpoint does one inline insert, for deduplication and durability, before answering 200. Notifications are dispatched in-process with an EventEmitter. They're best-effort, and the durable state (invoice status, approvals, unread counts) is always in MongoDB.
-
-**Not finished:**
-- **Notifications aren't persisted.** A user who's offline misses the live notification, although `GET /approvals/pending`, invoice status and unread counts still show the current state.
-- **Cancelling is local only.** BillPort's contract has no cancel endpoint, so a cancelled invoice ignores later BillPort events.
-- **No automated test suite in the repo.** Workflows were verified with throwaway scripts and the asserted Postman collection, run with Newman, rather than Jest or Supertest.
-- **Plain JavaScript, not TypeScript.**
-
-**With another day:**
-1. A Jest + Supertest + mongodb-memory-server suite covering scope, approval races and webhook ordering, and run in CI.
-2. A persisted `notifications` collection, with a read API and replay on reconnect.
-3. A MongoDB replica set and transactions for convert and for discount requests. A transactional outbox for domain events.
-4. An integration-log retention policy (TTL index) and a small admin view of failed pushes, with bulk retry.
-5. Rate limiting on login and webhooks, plus Helmet and structured logging (pino) with a request id.
-6. Pagination on the list endpoints and a TypeScript migration.
