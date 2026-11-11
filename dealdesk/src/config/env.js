@@ -21,7 +21,7 @@ module.exports = {
   },
 
   push: {
-    maxAttempts: num('PUSH_MAX_ATTEMPTS', 6),
+    maxAttempts: num('PUSH_MAX_ATTEMPTS', 8),
     baseDelayMs: num('PUSH_BASE_DELAY_MS', 2000),
     maxDelayMs: num('PUSH_MAX_DELAY_MS', 60000),
     pollIntervalMs: num('PUSH_POLL_INTERVAL_MS', 1000),
