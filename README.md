@@ -4,8 +4,9 @@ DealDesk is a backend for deals, discount approvals, realtime deal chat and invo
 
 | App | Port | What it is |
 |---|---|---|
-| `dealdesk/` | 4000 | Main API (Express 5, MongoDB/Mongoose, JWT, Socket.IO, background jobs) + a plain demo page |
+| `dealdesk/` | 4000 | Main API (Express 5, MongoDB/Mongoose, JWT, Socket.IO, background jobs) |
 | `billport/` | 5000 | Fake billing service: random 503s, slow responses, duplicate / out-of-order / badly-signed webhooks |
+| `frontend/` | 5173 | Small React (Vite) UI to demonstrate the flows – login, deals, approvals, invoices, deal chat. Not part of the marked backend |
 
 Stack: Node.js 20+, Express 5, MongoDB 7 with Mongoose, JWT and bcrypt (`bcryptjs`), Socket.IO, Joi. The code is plain JavaScript (CommonJS) so the solution stays small and readable within the time box.
 
@@ -26,9 +27,10 @@ docker compose up -d mongo
 
 cd billport && npm install && cp .env.example .env && npm run dev     # terminal 1
 cd dealdesk && npm install && cp .env.example .env && npm run seed && npm run dev   # terminal 2
+cd frontend && npm install && npm run dev                              # terminal 3 (optional UI)
 ```
 
-- **Demo UI:** http://localhost:4000. Open several tabs and log in as a different user in each.
+- **Demo UI:** http://localhost:5173. Vite proxies `/api` and `/socket.io` to the API, so no CORS setup is needed. The login is stored per tab, so you can open several tabs and log in as a different user in each.
 - **Postman:** import `postman/DealDesk.postman_collection.json`, run `npm run seed`, then run folders 0–8 in order. Every request asserts its expected result. The full run is 84 requests and 111 assertions, all passing locally and against Docker.
 
 **Seed users** (password `Password123!`, all `@dealdesk.test`):
@@ -60,8 +62,15 @@ dealdesk/src
 │   └── users/ branches/ customers/ products/
 ├── realtime/          Socket.IO server, room emitter, event → notification mapping
 └── database/          model registry, seed
+
+frontend/src
+├── api/               fetch wrapper (JWT header, per-tab token)
+├── context/           Auth, Socket (one connection, useSocketEvent hook), Toast
+├── components/common/ reusable Button, Input, Select, TextArea, Card, Badge, Table, Modal, Avatar, Icon …
+├── components/layout/ sidebar, top bar, notification bell
+└── pages/             deals/, chat/, approvals, invoices, approval rules, login
 ```
-Controllers stay thin and the business rules live in the services.
+Controllers stay thin and the business rules live in the services. The UI only *hides* actions a user lacks permission for; the API enforces every rule again.
 
 ---
 
@@ -224,7 +233,7 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | # | How |
 |---|---|
 | 01–03, 06–08 | Postman folders 4–6 (asserted) |
-| 04 | Demo UI: exec.a and manager.a open the deal chat in two tabs; exec.b never sees the thread |
+| 04 | UI (http://localhost:5173): exec.a and manager.a open the same thread under Deal chat in two tabs; exec.b never sees the thread |
 | 05 | Stop BillPort (Ctrl+C), convert a won deal → the DealDesk log shows `retry_scheduled_in_2s / 4s / 8s …` → start BillPort → the push succeeds on its own |
 | 06–08 by hand | `cd dealdesk && node scripts/send-webhook.js <externalId> SENT 1 --times 3` · `... PAID 3` then `... VIEWED 2` · `... PAID 3 --tamper` |
 | 09 | `POST localhost:5000/admin/chaos {"webhooksEnabled": false}`, convert a deal → after about N min the log shows `[reconcile] … repaired pending -> paid` |

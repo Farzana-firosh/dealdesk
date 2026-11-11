@@ -106,6 +106,18 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
   - [x] Offline participant's unread count correct on next login; mark read; history persisted
   - [x] Notifications reach only the right users (other-branch manager and later-step finance excluded)
 
+## Phase 6b – Demo UI (`frontend/`, React + Vite)
+- [x] Separate app; backend is API-only (old static page removed)
+- [x] Reusable components in `components/common` (Button, Input, Select, TextArea, Card, Badge/StatusBadge, Table, Modal, Avatar, Icon, EmptyState, Field)
+- [x] Layout: permission-filtered sidebar with unread / pending counts, top bar with live status + notification bell, mobile drawer
+- [x] Pages: Login, Deals (+ new deal, discount request, approval history), Deal chat (threads, conversation, deal details), Approvals, Invoices (+ integration log), Approval rules (admin)
+- [x] Responsive (desktop 3-column chat → tablet 2-column → mobile single view)
+- Tests
+  - [x] Headless Edge walkthrough: login error, scoped deals, live chat between two users, discount → manager notification + pending, admin rules, finance invoices – no page errors
+  - [x] Mobile 390px: no horizontal overflow, drawer menu
+  - [x] Proxy: REST + websocket through Vite
+  - [x] Fixed: reload right after login no longer logs out (only a 401 ends the session)
+
 ## Phase 7 – Submission (target 30 min)
 - [x] Postman collection covering every endpoint (`postman/`, 84 requests, 111 assertions – passes via newman locally and against Docker)
 - [x] README answering the six required questions + run instructions, API overview, scenario guide, trade-offs
