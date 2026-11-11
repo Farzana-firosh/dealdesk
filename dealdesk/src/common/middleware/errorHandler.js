@@ -1,4 +1,4 @@
-const AppError = require('../utils/AppError');
+const AppError = require('../errors/AppError');
 
 function notFound(req, res, next) {
   next(AppError.notFound(`Route ${req.method} ${req.originalUrl} not found`));

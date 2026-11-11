@@ -15,16 +15,19 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
 - [x] `.gitignore`, `.env.example`
 
 ## Phase 2 – Auth & permissions (Part 1 · 20%) (target 45 min)
-- [ ] Models: Branch, Role (permissions with scope), User (branchId, managerId), Customer, Product
-- [ ] bcrypt password hashing, `POST /auth/login` → JWT, `GET /auth/me`
-- [ ] `authenticate` middleware
-- [ ] One reusable guard: `authorize('deal.view')` → sets `req.scope`
-- [ ] `scopeFilter()` turns scope (own / branch / all) into a Mongo filter
-- [ ] Admin: manage roles & permissions (`/roles`)
-- [ ] Seed: 2 branches, 6 users (exec+manager per branch, finance, admin), 3 customers, 3 products, roles, approval config
+- [x] Models: Branch, Role (permissions with scope), User (branchId, managerId), Customer, Product
+- [x] bcrypt (bcryptjs) password hashing, `POST /api/auth/login` → JWT, `GET /api/auth/me`
+- [x] `authenticate` middleware (role reloaded from DB per request)
+- [x] One reusable guard: `authorize('deal.view')` → sets `req.scope`
+- [x] `scopeFilter()` turns scope (own / branch / all) into a Mongo filter
+- [x] Admin: manage roles & permissions (`/api/roles`, `/api/roles/permissions`)
+- [x] Seed: 2 branches, 6 users (exec+manager per branch, finance, admin), 3 customers, 3 products, roles
+- [ ] Seed approval config (Phase 4)
 - Tests
-  - [ ] Three users with `deal.view` get three different lists
-  - [ ] Scenario 01: exec A → Branch B deal by id = 404; finance reads both
+  - [x] Login ok / wrong password 401 / invalid body 400 / no or bad token 401
+  - [x] Exec → `/roles` 403, admin → 200; admin creates a new role as pure data; unknown permission key → 400
+  - [ ] Three users with `deal.view` get three different lists (Phase 3, needs deals)
+  - [ ] Scenario 01 (Phase 3)
 
 ## Phase 3 – Deals (target 20 min)
 - [ ] Deal model (owner, branch, customer, line items, discount, status)
