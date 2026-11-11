@@ -1,0 +1,10 @@
+node_modules/
+.env
+*.log
+.DS_Store
+dump/
+
+# assignment material kept locally only
+dealdesk_docs/
+DealDesk - Fullstack developer.pdf
+dealdesk_pdf_to_md.md
