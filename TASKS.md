@@ -91,15 +91,20 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
   - [x] Scenario 09: webhooks dropped → reconciliation repairs status
 
 ## Phase 6 – Chat & notifications (Part 3 · 15%) (target 35 min)
-- [ ] Thread (one per deal) with participants + unread counts; Message model
-- [ ] Participants: owner, owner's manager, anyone who comments
-- [ ] `GET /threads` (mine only, last message preview, unread), `GET/POST /threads/:dealId/messages`, mark read
-- [ ] Socket.IO JWT auth at handshake
-- [ ] Rooms: `user:<id>` and `deal:<id>` (join only if participant)
-- [ ] One realtime module for chat + notifications (discount requested / decided, invoice status)
-- [ ] Plain HTML demo page
-- Tests
-  - [ ] Scenario 04: two participants live, non-participant gets nothing
+- [x] Thread (one per deal, unique dealId) with participants + stored unread counts; Message model
+- [x] Participants: owner, owner's manager (created with the deal), anyone who comments (if they can see the deal)
+- [x] `GET /api/threads` (mine only, last message preview, unread), `GET/POST /api/threads/:dealId/messages`, `POST /:dealId/read`
+- [x] Socket.IO JWT auth at handshake (`io.use`)
+- [x] Rooms: `user:<id>` (auto) and `deal:<id>` (join only after participant check)
+- [x] One event layer: services publish to `common/events.js`; `realtime/notifications.js` maps events to rooms
+- [x] Notifications: discount.requested → current-step approvers (scoped), discount.decided → requester, invoice.status_changed → deal owner
+- [x] Bonus: typing indicator (relayed only inside a joined room)
+- [x] Plain HTML demo page (`dealdesk/public/index.html`) covering the full workflow
+- Tests (26/26)
+  - [x] Scenario 04: two participants live, non-participant can't join room, receives nothing, doesn't see thread
+  - [x] Unauthenticated / bad-token socket rejected at handshake
+  - [x] Offline participant's unread count correct on next login; mark read; history persisted
+  - [x] Notifications reach only the right users (other-branch manager and later-step finance excluded)
 
 ## Phase 7 – Submission (target 30 min)
 - [ ] Postman collection covering every endpoint

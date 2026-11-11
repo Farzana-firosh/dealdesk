@@ -3,6 +3,7 @@ const Customer = require('../customers/customer.model');
 const Product = require('../products/product.model');
 const AppError = require('../../common/errors/AppError');
 const { scopeFilter } = require('../auth/scope');
+const { ensureThread } = require('../chat/chat.service');
 
 const POPULATE = [
   { path: 'customerId', select: 'name email' },
@@ -41,13 +42,15 @@ async function getDeal(user, scope, dealId, { populate = true } = {}) {
 
 async function createDeal(user, { title, customerId, items }) {
   await assertCustomer(customerId);
-  return Deal.create({
+  const deal = await Deal.create({
     title,
     customerId,
     ownerId: user._id,
     branchId: user.branchId,
     items: await buildItems(items),
   });
+  await ensureThread(deal._id); // owner + manager see the thread straight away
+  return deal;
 }
 
 async function updateDeal(user, scope, dealId, changes) {

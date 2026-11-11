@@ -17,4 +17,7 @@ function scopeFilter(user, scope, { ownerField = 'ownerId', branchField = 'branc
   }
 }
 
-module.exports = { scopeFilter };
+// Scope the user holds for a permission, or null. For services that need a second permission's scope.
+const scopeFor = (user, key) => user.role.permissions.find((p) => p.key === key)?.scope ?? null;
+
+module.exports = { scopeFilter, scopeFor };

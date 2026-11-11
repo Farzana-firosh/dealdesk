@@ -10,6 +10,7 @@ const Customer = require('../modules/customers/customer.model');
 const Product = require('../modules/products/product.model');
 const Deal = require('../modules/deals/deal.model');
 const ApprovalConfig = require('../modules/approvals/approval-config.model');
+const { ensureThread } = require('../modules/chat/chat.service');
 require('./models'); // register the rest so syncIndexes covers every collection
 
 const PASSWORD = 'Password123!';
@@ -104,9 +105,12 @@ async function seed() {
   const deal = (title, owner, customer, items) =>
     Deal.create({ title, ownerId: owner._id, branchId: owner.branchId, customerId: customer._id, items });
 
-  await deal('Excavator fleet – Gulf Construction', execA, customers[0], [item(products[0], 2)]);
-  await deal('Generators – Marina Facilities', managerA, customers[2], [item(products[1], 3)]);
-  await deal('Forklifts – Desert Logistics', execB, customers[1], [item(products[2], 4)]);
+  const deals = [
+    await deal('Excavator fleet – Gulf Construction', execA, customers[0], [item(products[0], 2)]),
+    await deal('Generators – Marina Facilities', managerA, customers[2], [item(products[1], 3)]),
+    await deal('Forklifts – Desert Logistics', execB, customers[1], [item(products[2], 4)]),
+  ];
+  for (const d of deals) await ensureThread(d._id);
 
   console.log(`[seed] done. All users have password: ${PASSWORD}`);
 }

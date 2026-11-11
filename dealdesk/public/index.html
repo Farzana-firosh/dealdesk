@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DealDesk Demo</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --line:#dde1e6; --muted:#6b7280; --accent:#2563eb; --ok:#15803d; --bad:#b91c1c; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:#111; }
+  header { display:flex; gap:12px; align-items:center; padding:10px 16px; background:#111827; color:#fff; flex-wrap:wrap; }
+  header b { font-size:16px; }
+  header .who { margin-left:auto; }
+  main { display:grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap:12px; padding:12px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; min-width:0; }
+  h2 { margin:0 0 8px; font-size:15px; display:flex; justify-content:space-between; align-items:center; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td, th { border-bottom:1px solid var(--line); padding:4px; text-align:left; vertical-align:top; }
+  button { font:inherit; padding:3px 8px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; margin:1px; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  input, select, textarea { font:inherit; padding:4px; border:1px solid var(--line); border-radius:5px; max-width:100%; }
+  .muted { color:var(--muted); font-size:12px; }
+  .badge { display:inline-block; min-width:18px; padding:0 6px; border-radius:9px; background:var(--bad); color:#fff; font-size:11px; text-align:center; }
+  .pill { padding:1px 6px; border-radius:9px; background:#eef2ff; font-size:12px; }
+  .row { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:6px; }
+  #messages { height:260px; overflow-y:auto; border:1px solid var(--line); border-radius:5px; padding:6px; background:#fafafa; }
+  .msg { margin:4px 0; } .msg .from { font-weight:600; }
+  #feed { max-height:260px; overflow-y:auto; font-size:12px; }
+  #feed div { border-bottom:1px solid var(--line); padding:3px 0; }
+  pre { white-space:pre-wrap; word-break:break-word; font-size:11px; max-height:300px; overflow:auto; background:#f3f4f6; padding:6px; border-radius:5px; }
+  .thread { cursor:pointer; padding:5px; border-bottom:1px solid var(--line); } .thread.active { background:#eef2ff; }
+  #login { max-width:360px; margin:60px auto; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <b>DealDesk demo</b><span class="muted" style="color:#9ca3af">plain test UI · each browser tab can be a different user</span>
+  <span class="who" id="who"></span><span id="sock" class="pill">offline</span>
+  <button id="logout" class="hidden">Log out</button>
+</header>
+
+<section id="login">
+  <h2>Log in</h2>
+  <div class="row"><select id="email">
+    <option>exec.a@dealdesk.test</option><option>manager.a@dealdesk.test</option>
+    <option>exec.b@dealdesk.test</option><option>manager.b@dealdesk.test</option>
+    <option>finance@dealdesk.test</option><option>admin@dealdesk.test</option>
+  </select></div>
+  <div class="row"><input id="password" type="password" value="Password123!"></div>
+  <button class="primary" id="loginBtn">Log in</button> <span id="loginErr" class="muted"></span>
+</section>
+
+<main id="app" class="hidden">
+  <section>
+    <h2>Deals <button onclick="loadDeals()">↻</button></h2>
+    <div class="row">
+      <input id="dTitle" placeholder="Deal title" size="16">
+      <select id="dCustomer"></select><select id="dProduct"></select>
+      <input id="dQty" type="number" value="1" min="1" style="width:55px">
+      <button class="primary" onclick="createDeal()">Create</button>
+    </div>
+    <table><thead><tr><th>Deal</th><th>Owner / branch</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody id="deals"></tbody></table>
+  </section>
+
+  <section>
+    <h2>Pending approvals (for me) <button onclick="loadPending()">↻</button></h2>
+    <table><tbody id="pending"></tbody></table>
+    <h2 style="margin-top:12px">Live notifications</h2>
+    <div id="feed"></div>
+  </section>
+
+  <section>
+    <h2>Chat threads</h2>
+    <div id="threads"></div>
+    <h2 style="margin-top:10px"><span id="chatTitle">No thread open</span></h2>
+    <div id="messages"></div>
+    <div class="muted" id="typing">&nbsp;</div>
+    <div class="row"><input id="msgText" placeholder="Message" style="flex:1"><button class="primary" onclick="sendMessage()">Send</button></div>
+  </section>
+
+  <section>
+    <h2>Invoices <button onclick="loadInvoices()">↻</button></h2>
+    <table><thead><tr><th>Invoice</th><th>Status</th><th>Push</th><th></th></tr></thead><tbody id="invoices"></tbody></table>
+  </section>
+
+  <section>
+    <h2>Details</h2>
+    <pre id="details">Click "history" or "logs" to inspect.</pre>
+  </section>
+
+  <section id="adminPanel" class="hidden">
+    <h2>Approval config (admin) <button onclick="loadConfig()">↻</button></h2>
+    <textarea id="config" rows="14" style="width:100%"></textarea>
+    <button class="primary" onclick="saveConfig()">Save config</button> <span id="configMsg" class="muted"></span>
+  </section>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// sessionStorage (not localStorage) so two tabs can be logged in as two different users
+const store = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } },
+                set: (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch {} } };
+let token = store.get('token');
+let me = null, socket = null, openDealId = null, typingTimer = null;
+const $ = (id) => document.getElementById(id);
+const el = (tag, text, cls) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; };
+const btn = (label, fn, cls) => { const b = el('button', label, cls); b.onclick = fn; return b; };
+const can = (key) => me?.role.permissions.some((p) => p.key === key);
+
+async function api(method, path, body) {
+  const res = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: body && JSON.stringify(body) });
+  const data = res.status === 204 ? {} : await res.json().catch(() => ({}));
+  if (!res.ok) { alert(`${res.status}: ${data.error || 'error'}${data.details ? '\n' + data.details.join('\n') : ''}`); throw data; }
+  return data;
+}
+
+$('loginBtn').onclick = async () => {
+  const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: $('email').value, password: $('password').value }) });
+  const data = await res.json();
+  if (!res.ok) return ($('loginErr').textContent = data.error);
+  token = data.token; store.set('token', token); start();
+};
+$('logout').onclick = () => { store.set('token', null); location.reload(); };
+
+async function start() {
+  try { me = (await api('GET', '/auth/me')).user; } catch { store.set('token', null); return; }
+  $('login').classList.add('hidden'); $('app').classList.remove('hidden'); $('logout').classList.remove('hidden');
+  $('who').textContent = `${me.name} · ${me.role.name}`;
+  $('adminPanel').classList.toggle('hidden', !can('approval_config.manage'));
+  connectSocket();
+  const [{ customers }, { products }] = await Promise.all([api('GET', '/customers'), api('GET', '/products')]);
+  $('dCustomer').replaceChildren(...customers.map((c) => Object.assign(el('option', c.name), { value: c._id })));
+  $('dProduct').replaceChildren(...products.map((p) => Object.assign(el('option', `${p.name} (${p.price})`), { value: p._id })));
+  loadDeals(); loadPending(); loadThreads(); loadInvoices(); if (can('approval_config.manage')) loadConfig();
+}
+
+// ---------- realtime ----------
+function connectSocket() {
+  socket = io({ auth: { token } });
+  socket.on('connect', () => { $('sock').textContent = 'live'; if (openDealId) socket.emit('thread:join', { dealId: openDealId }, () => {}); });
+  socket.on('disconnect', () => ($('sock').textContent = 'offline'));
+  socket.on('connect_error', (e) => ($('sock').textContent = 'rejected: ' + e.message));
+
+  socket.on('chat:message', (m) => {
+    if (m.dealId !== openDealId) return;
+    appendMessage(m);
+    if (m.senderId !== me.id) api('POST', `/threads/${openDealId}/read`).then(loadThreads);
+  });
+  socket.on('chat:typing', ({ dealId, name }) => {
+    if (dealId !== openDealId) return;
+    $('typing').textContent = `${name} is typing…`;
+    clearTimeout(typingTimer); typingTimer = setTimeout(() => ($('typing').innerHTML = '&nbsp;'), 1500);
+  });
+  socket.on('thread:updated', () => loadThreads());
+  socket.on('notification', (n) => {
+    const d = n.data;
+    const text = {
+      'discount.requested': () => `Approval needed: ${d.dealTitle || 'deal'} – ${d.discountPercent}% (step ${d.step}/${d.totalSteps}, ${d.role})`,
+      'discount.decided': () => `Your discount request: step ${d.step} ${d.action}${d.remarks ? ` (“${d.remarks}”)` : ''} → request ${d.requestStatus}`,
+      'invoice.status_changed': () => `Invoice ${d.number} is now ${d.status}`,
+    }[n.type]?.() || JSON.stringify(n);
+    $('feed').prepend(el('div', `${new Date(n.at).toLocaleTimeString()} · ${text}`));
+    if (n.type.startsWith('discount')) { loadPending(); loadDeals(); }
+    if (n.type === 'invoice.status_changed') loadInvoices();
+  });
+}
+
+// ---------- deals ----------
+async function loadDeals() {
+  const { deals, scope } = await api('GET', '/deals');
+  $('deals').replaceChildren(...deals.map((d) => {
+    const tr = el('tr');
+    tr.append(el('td', d.title), el('td', `${d.ownerId?.name} / ${d.branchId?.code}`), el('td', `${d.total}${d.discountPercent ? ` (-${d.discountPercent}%)` : ''}`), el('td', d.status));
+    const actions = el('td');
+    actions.append(btn('chat', () => openThread(d._id, d.title)), btn('history', () => showHistory(d._id)));
+    if (d.status === 'open' && can('deal.edit')) actions.append(btn('discount', () => requestDiscount(d._id)));
+    if (d.status === 'won' && can('invoice.issue')) actions.append(btn('convert', () => convert(d._id), 'primary'));
+    tr.append(actions);
+    return tr;
+  }));
+  if (!deals.length) $('deals').append(el('tr', `No deals in your scope (${scope})`, 'muted'));
+}
+async function createDeal() {
+  await api('POST', '/deals', { title: $('dTitle').value || 'New deal', customerId: $('dCustomer').value, items: [{ productId: $('dProduct').value, quantity: Number($('dQty').value) }] });
+  $('dTitle').value = ''; loadDeals(); loadThreads();
+}
+async function requestDiscount(id) {
+  const pct = prompt('Discount %', '30'); if (pct == null) return;
+  const { request } = await api('POST', `/deals/${id}/discount-request`, { discountPercent: Number(pct), remarks: prompt('Remarks', '') || '' });
+  $('details').textContent = `Chain: ${request.steps.map((s) => s.roleName).join(' → ') || 'auto-approved'}\n\n` + JSON.stringify(request, null, 2);
+  loadDeals();
+}
+async function showHistory(id) { $('details').textContent = JSON.stringify(await api('GET', `/deals/${id}/approvals`), null, 2); }
+async function convert(id) {
+  const { invoice } = await api('POST', `/deals/${id}/convert`);
+  $('details').textContent = `Converted. Invoice ${invoice.number} queued for BillPort.\n\n` + JSON.stringify(invoice, null, 2);
+  loadDeals(); loadInvoices();
+}
+
+// ---------- approvals ----------
+async function loadPending() {
+  if (!can('discount.approve')) return $('pending').replaceChildren(el('tr', 'You cannot approve discounts.', 'muted'));
+  const { requests } = await api('GET', '/approvals/pending');
+  $('pending').replaceChildren(...requests.map((r) => {
+    const tr = el('tr');
+    const step = r.steps[r.currentStep - 1];
+    tr.append(el('td', `${r.dealId?.title} – ${r.discountPercent}%`), el('td', `step ${step.step}/${r.steps.length} · by ${r.requestedBy?.name}`));
+    const td = el('td');
+    td.append(btn('approve', () => decide(r._id, 'approve'), 'primary'), btn('reject', () => decide(r._id, 'reject')));
+    tr.append(td);
+    return tr;
+  }));
+  if (!requests.length) $('pending').append(el('tr', 'Nothing waiting on you.', 'muted'));
+}
+async function decide(id, action) {
+  const remarks = prompt(action === 'reject' ? 'Reason (required)' : 'Remarks', ''); if (remarks == null) return;
+  await api('POST', `/approvals/${id}/${action}`, { remarks });
+  loadPending(); loadDeals();
+}
+
+// ---------- chat ----------
+async function loadThreads() {
+  const { threads } = await api('GET', '/threads');
+  $('threads').replaceChildren(...threads.map((t) => {
+    const div = el('div', null, 'thread' + (t.dealId === openDealId ? ' active' : ''));
+    div.append(el('b', t.deal?.title || 'deal'), document.createTextNode(' '));
+    if (t.unreadCount) div.append(el('span', t.unreadCount, 'badge'));
+    div.append(el('div', t.lastMessage ? `${t.lastMessage.senderName}: ${t.lastMessage.text}` : 'no messages yet', 'muted'));
+    div.onclick = () => openThread(t.dealId, t.deal?.title);
+    return div;
+  }));
+  if (!threads.length) $('threads').append(el('div', 'You are not in any thread yet.', 'muted'));
+}
+function appendMessage(m) {
+  const div = el('div', null, 'msg');
+  div.append(el('span', m.senderName + ': ', 'from'), el('span', m.text), el('span', ' ' + new Date(m.createdAt).toLocaleTimeString(), 'muted'));
+  $('messages').append(div); $('messages').scrollTop = 1e9;
+}
+async function openThread(dealId, title) {
+  if (openDealId) socket.emit('thread:leave', { dealId: openDealId }, () => {});
+  openDealId = dealId; $('chatTitle').textContent = title; $('messages').replaceChildren();
+  try {
+    const { messages } = await api('GET', `/threads/${dealId}/messages`);
+    messages.forEach(appendMessage);
+    socket.emit('thread:join', { dealId }, () => {});
+    await api('POST', `/threads/${dealId}/read`);
+  } catch { $('messages').append(el('div', 'Not a participant yet – sending a message will join you (if you can see the deal).', 'muted')); }
+  loadThreads();
+}
+function sendMessage() {
+  if (!openDealId || !$('msgText').value.trim()) return;
+  socket.emit('chat:send', { dealId: openDealId, text: $('msgText').value }, (res) => {
+    if (!res.ok) return alert(res.error);
+    $('msgText').value = '';
+  });
+}
+$('msgText').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') return sendMessage();
+  if (openDealId) socket.emit('chat:typing', { dealId: openDealId });
+});
+
+// ---------- invoices ----------
+async function loadInvoices() {
+  if (!can('invoice.view')) return;
+  const { invoices } = await api('GET', '/invoices');
+  $('invoices').replaceChildren(...invoices.map((i) => {
+    const tr = el('tr');
+    tr.append(el('td', `${i.number}\n${i.amount} ${i.currency}`), el('td', i.status), el('td', `${i.pushStatus} (${i.pushAttempts})${i.pushError ? ' · ' + i.pushError : ''}`));
+    const td = el('td');
+    td.append(btn('logs', async () => ($('details').textContent = JSON.stringify((await api('GET', `/invoices/${i._id}/logs`)).logs, null, 2))));
+    if (i.pushStatus === 'failed' && can('invoice.issue')) td.append(btn('retry push', async () => { await api('POST', `/invoices/${i._id}/retry-push`); loadInvoices(); }));
+    if (['pending', 'sent', 'viewed'].includes(i.status) && can('invoice.cancel')) td.append(btn('cancel', async () => { await api('POST', `/invoices/${i._id}/cancel`); loadInvoices(); }));
+    tr.append(td);
+    return tr;
+  }));
+}
+
+// ---------- admin ----------
+async function loadConfig() {
+  const { config } = await api('GET', '/approval-config');
+  const bands = config.bands.map((b) => ({ minPercent: b.minPercent, maxPercent: b.maxPercent, steps: b.steps.map((s) => s.name) }));
+  $('config').value = JSON.stringify(bands, null, 2); $('configMsg').textContent = `version ${config.version}`;
+}
+async function saveConfig() {
+  let bands; try { bands = JSON.parse($('config').value); } catch { return alert('Invalid JSON'); }
+  const { config } = await api('PUT', '/approval-config', { bands });
+  $('configMsg').textContent = `saved · version ${config.version}`;
+}
+
+if (token) start();
+</script>
+</body>
+</html>
