@@ -6,3 +6,6 @@ require('../modules/users/user.model');
 require('../modules/customers/customer.model');
 require('../modules/products/product.model');
 require('../modules/deals/deal.model');
+require('../modules/approvals/approval-config.model');
+require('../modules/approvals/approval-request.model');
+require('../modules/approvals/approval-history.model');

@@ -42,18 +42,21 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
   - [x] Create/edit by owner; other exec 404; finance 403 on edit/create; bad body / unknown product 400
 
 ## Phase 4 – Approval workflow (Part 2 · 20%) (target 50 min)
-- [ ] ApprovalConfig (bands → ordered role ids), admin `GET/PUT /approval-config`
-- [ ] Chain resolved from DB on every request (no restart, no if-else ladder)
-- [ ] `POST /deals/:id/discount-request` (≤ auto threshold → auto-approved → won)
-- [ ] `POST /approvals/:id/approve` / `reject` with remarks
-- [ ] Sequential: acting on a later step → 409; atomic step advance
-- [ ] Only your own step + `discount.approve`; no self-approval
-- [ ] Rejection → deal `open`, chain cleared; re-request = fresh chain
-- [ ] Append-only ApprovalHistory (update/delete blocked at model level)
-- [ ] `GET /approvals/pending` – only items waiting on the logged-in user
-- Tests
-  - [ ] Scenario 02: 30% → 2 steps, finance first = 409, then won
-  - [ ] Scenario 03: admin edits band → new 30% request has 3 steps
+- [x] ApprovalConfig (bands → ordered role ids), admin `GET/PUT /api/approval-config` (validates 0–100 coverage, unknown roles)
+- [x] Chain resolved from DB on every request (no restart, no if-else ladder); snapshotted into the request
+- [x] `POST /api/deals/:id/discount-request` (≤ 10% → auto-approved → won)
+- [x] `POST /api/approvals/:id/approve` / `reject` (reject requires remarks)
+- [x] Sequential: acting on a later step → 409; atomic step advance on `currentStep`
+- [x] Only your own step + `discount.approve` + scope; no self-approval
+- [x] Rejection → deal `open`, chain closed; re-request = fresh chain (partial unique index: one pending chain per deal)
+- [x] Append-only `approval_history` (update/delete/save-existing blocked at model level)
+- [x] `GET /api/approvals/pending` – only items whose current step is the user's role, in scope, not their own
+- [x] `GET /api/deals/:id/approvals` – requests + history
+- [x] Domain event bus (`common/events.js`) publishes discount.requested / discount.decided (consumed in Phase 6)
+- Tests (32/32 + append-only check)
+  - [x] Scenario 02: 30% → 2 steps, finance first = 409, manager then finance → won
+  - [x] Scenario 03: admin edits band → new 30% request has 3 steps, no restart
+  - [x] Auto-approve, rejection reset, fresh chain, self-approval 403, cross-branch manager 404, double request 409
 
 ## Phase 5 – Invoicing & BillPort (Part 4 · 30%) (target 80 min)
 ### BillPort (separate app)

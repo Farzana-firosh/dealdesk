@@ -3,6 +3,7 @@ const Joi = require('joi');
 const { authorize } = require('../auth/auth.middleware');
 const { validate } = require('../../common/middleware/validate');
 const controller = require('./deal.controller');
+const approvalController = require('../approvals/approval.controller');
 
 const objectId = Joi.string().hex().length(24);
 const items = Joi.array()
@@ -26,5 +27,12 @@ router.get('/', authorize('deal.view'), controller.list);
 router.get('/:id', authorize('deal.view'), controller.getOne);
 router.post('/', authorize('deal.edit'), validate(createSchema), controller.create);
 router.patch('/:id', authorize('deal.edit'), validate(updateSchema), controller.update);
+
+const discountSchema = Joi.object({
+  discountPercent: Joi.number().min(0).max(100).required(),
+  remarks: Joi.string().trim().allow(''),
+});
+router.post('/:id/discount-request', authorize('deal.edit'), validate(discountSchema), approvalController.requestDiscount);
+router.get('/:id/approvals', authorize('deal.view'), approvalController.dealHistory);
 
 module.exports = router;

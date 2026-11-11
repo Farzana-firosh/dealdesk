@@ -9,6 +9,8 @@ const User = require('../modules/users/user.model');
 const Customer = require('../modules/customers/customer.model');
 const Product = require('../modules/products/product.model');
 const Deal = require('../modules/deals/deal.model');
+const ApprovalConfig = require('../modules/approvals/approval-config.model');
+require('./models'); // register the rest so syncIndexes covers every collection
 
 const PASSWORD = 'Password123!';
 
@@ -64,6 +66,17 @@ async function seed() {
   const roles = await Role.create(ROLES);
   const roleId = Object.fromEntries(roles.map((r) => [r.name, r._id]));
   const passwordHash = await hashPassword(PASSWORD);
+
+  // Discount approval bands: (min, max] -> ordered approver roles
+  await ApprovalConfig.create({
+    key: 'discount',
+    bands: [
+      { minPercent: 0, maxPercent: 10, steps: [] },
+      { minPercent: 10, maxPercent: 25, steps: [roleId.sales_manager] },
+      { minPercent: 25, maxPercent: 40, steps: [roleId.sales_manager, roleId.finance] },
+      { minPercent: 40, maxPercent: 100, steps: [roleId.sales_manager, roleId.finance, roleId.admin] },
+    ],
+  });
 
   const user = (name, email, role, branch, manager = null) =>
     User.create({ name, email, passwordHash, roleId: roleId[role], branchId: branch._id, managerId: manager?._id ?? null });
