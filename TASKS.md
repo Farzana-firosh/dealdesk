@@ -60,33 +60,35 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
 
 ## Phase 5 – Invoicing & BillPort (Part 4 · 30%) (target 80 min)
 ### BillPort (separate app)
-- [ ] `POST /billing/invoices`: 15% 503, 10% 6 s delay, else 201 QUEUED
-- [ ] Same Idempotency-Key → same externalId (unique index)
-- [ ] Verifies DealDesk's X-Signature
-- [ ] `GET /billing/invoices/:externalId`
-- [ ] Webhooks SENT → VIEWED → PAID/FAILED every 5–30 s
-- [ ] 20% duplicates, out-of-order, 10% bad signature, retry if no answer in 3 s
-- [ ] Toggle to stop sending webhooks (scenario 09)
+- [x] `POST /billing/invoices`: 15% 503, 10% 6 s delay, else 201 QUEUED
+- [x] Same Idempotency-Key → same externalId (unique index + E11000 race handling)
+- [x] Verifies DealDesk's X-Signature (401)
+- [x] `GET /billing/invoices/:externalId`
+- [x] Lifecycle SENT → VIEWED → PAID/FAILED at random 5–30 s steps (DB-driven)
+- [x] Webhooks: 20% duplicates, 25% VIEWED held back (out of order), 10% bad signature, 3 s timeout → retry with backoff
+- [x] `/admin/chaos` to tune misbehaviour / disable webhooks (scenario 09); `/admin/invoices`, `/admin/deliveries`
 ### DealDesk
-- [ ] `POST /deals/:id/convert` (won deal → Sale + Invoice locally, never fails on BillPort)
-- [ ] Push worker: DB-backed queue (status + nextAttemptAt + lock), not in-memory
-- [ ] Exponential backoff with cap + max attempts → terminal `push_failed`; manual retry endpoint
-- [ ] Stable Idempotency-Key per invoice (stored, unique)
-- [ ] HMAC-signed outbound request, 4 s timeout
-- [ ] Webhook: raw body, verify HMAC before parsing → 401
-- [ ] Dedup by eventId (unique index), stale events ignored by sequence
-- [ ] Ack 200 then process async
-- [ ] Status mapping QUEUED/SENT/VIEWED/PAID/FAILED → pending/sent/viewed/paid/failed
-- [ ] On paid: reduce customer outstanding balance exactly once + live notification
-- [ ] Reconciliation job, N minutes configurable
-- [ ] integration_logs for every outbound attempt and inbound event
-- [ ] `GET /invoices`, `GET /invoices/:id`, `GET /invoices/:id/logs`, cancel
-- Tests
-  - [ ] Scenario 05: BillPort down → retries with growing gaps → recovers
-  - [ ] Scenario 06: same webhook ×3 → one change, two ignored duplicates logged
-  - [ ] Scenario 07: PAID then VIEWED → stays paid
-  - [ ] Scenario 08: tampered body → 401, nothing changes
-  - [ ] Scenario 09: webhooks blocked → reconciliation fixes status
+- [x] `POST /api/deals/:id/convert` (invoice.issue) – won deal → Sale + Invoice locally; idempotent (unique saleId/dealId)
+- [x] Push worker: MongoDB-backed (pushStatus + nextPushAt + lock with expiry), atomic claim
+- [x] Exponential backoff (2s→60s cap, ±20% jitter), 8 attempts → terminal `failed`; `POST /api/invoices/:id/retry-push`
+- [x] Stable Idempotency-Key per invoice (generated once at creation, unique index)
+- [x] HMAC-signed outbound request, 4 s timeout (AbortSignal)
+- [x] Webhook: `express.raw`, HMAC verified (timingSafeEqual) before parsing → 401
+- [x] Dedup by eventId (unique index on `webhook_events`), stale events ignored by sequence + forward-only rank
+- [x] Ack 200 then process async (setImmediate) + sweep job for crash recovery / unknown-invoice retries
+- [x] Status mapping QUEUED/SENT/VIEWED/PAID/FAILED → pending/sent/viewed/paid/failed
+- [x] On paid: outstanding balance reduced exactly once (inside the guarded transition) + `invoice.status_changed` event
+- [x] Reconciliation job, N = `RECONCILE_STALE_MINUTES` (default 1)
+- [x] `integration_logs` for every push attempt, inbound webhook (incl. rejected/duplicate/stale) and reconcile call
+- [x] `GET /api/invoices`, `/:id`, `/:id/logs`, `POST /:id/cancel`
+- [x] `scripts/send-webhook.js` for replay / out-of-order / tamper demos
+- Tests (22/22 + live chaos run)
+  - [x] Idempotency: forced 6 s response → timeout → retry → exactly one BillPort invoice, same externalId
+  - [x] Scenario 05: BillPort failing → retries with growing gaps (3s,4s,8s…) → recovers on its own
+  - [x] Scenario 06: same webhook ×3 → one change, two `duplicate_ignored` logs
+  - [x] Scenario 07: PAID then VIEWED → stays paid; balance reduced once
+  - [x] Scenario 08: tampered body → 401, nothing changes
+  - [x] Scenario 09: webhooks dropped → reconciliation repairs status
 
 ## Phase 6 – Chat & notifications (Part 3 · 15%) (target 35 min)
 - [ ] Thread (one per deal) with participants + unread counts; Message model

@@ -9,3 +9,7 @@ require('../modules/deals/deal.model');
 require('../modules/approvals/approval-config.model');
 require('../modules/approvals/approval-request.model');
 require('../modules/approvals/approval-history.model');
+require('../modules/invoices/sale.model');
+require('../modules/invoices/invoice.model');
+require('../modules/invoices/integration-log.model');
+require('../modules/invoices/webhook-event.model');

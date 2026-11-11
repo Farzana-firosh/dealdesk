@@ -4,6 +4,7 @@ const { authorize } = require('../auth/auth.middleware');
 const { validate } = require('../../common/middleware/validate');
 const controller = require('./deal.controller');
 const approvalController = require('../approvals/approval.controller');
+const invoiceController = require('../invoices/invoice.controller');
 
 const objectId = Joi.string().hex().length(24);
 const items = Joi.array()
@@ -34,5 +35,6 @@ const discountSchema = Joi.object({
 });
 router.post('/:id/discount-request', authorize('deal.edit'), validate(discountSchema), approvalController.requestDiscount);
 router.get('/:id/approvals', authorize('deal.view'), approvalController.dealHistory);
+router.post('/:id/convert', authorize('invoice.issue'), invoiceController.convert);
 
 module.exports = router;

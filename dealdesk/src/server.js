@@ -2,9 +2,11 @@ const http = require('http');
 const env = require('./config/env');
 const { connectDb } = require('./config/db');
 const { createApp } = require('./app');
+const { startInvoiceJobs } = require('./modules/invoices/invoice.jobs');
 
 async function start() {
   await connectDb();
+  startInvoiceJobs();
 
   const server = http.createServer(createApp());
   server.listen(env.port, () => console.log(`[dealdesk] listening on :${env.port}`));
