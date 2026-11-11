@@ -2766,7 +2766,7 @@
           }
         }
       ],
-      "description": "S05 and S09 need time and stopping a service, so they are shown in the recording rather than here. See README."
+      "description": "S05 (BillPort stopped) and S09 (webhooks blocked) involve stopping a service and waiting for retries / reconciliation, so they are run by hand – steps in README section 8 and folder 9."
     },
     {
       "name": "7. Chat",
@@ -3348,11 +3348,21 @@
       ]
     },
     {
-      "name": "9. Manual demo helpers (not part of the automated run)",
+      "name": "9. BillPort chaos controls",
       "item": [
         {
-          "name": "Admin – block webhooks (scenario 09)",
-          "event": [],
+          "name": "S09 – block webhook callbacks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -3361,10 +3371,10 @@
                 "value": "application/json"
               }
             ],
-            "description": "Manual: run this, convert a deal, and watch reconciliation repair the status within N minutes. Re-enable afterwards with the request above.",
+            "description": "BillPort keeps advancing invoices but drops every webhook. The reconciliation job repairs the status after RECONCILE_STALE_MINUTES.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"webhooksEnabled\": false\n}"
+              "raw": "{\n  \"webhooksEnabled\": false,\n  \"minStepSec\": 2,\n  \"maxStepSec\": 5\n}"
             },
             "url": {
               "raw": "{{billportUrl}}/admin/chaos",
@@ -3374,6 +3384,109 @@
               "path": [
                 "admin",
                 "chaos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Disable random failures and automatic webhooks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Makes webhook replays (S06–S08) deterministic: only the webhooks you send arrive.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"failRate\": 0,\n  \"slowRate\": 0,\n  \"webhooksEnabled\": false,\n  \"minStepSec\": 600,\n  \"maxStepSec\": 601\n}"
+            },
+            "url": {
+              "raw": "{{billportUrl}}/admin/chaos",
+              "host": [
+                "{{billportUrl}}"
+              ],
+              "path": [
+                "admin",
+                "chaos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Restore default misbehaviour (as specified)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"failRate\": 0.15,\n  \"slowRate\": 0.1,\n  \"webhooksEnabled\": true,\n  \"paidRate\": 0.8,\n  \"minStepSec\": 5,\n  \"maxStepSec\": 30\n}"
+            },
+            "url": {
+              "raw": "{{billportUrl}}/admin/chaos",
+              "host": [
+                "{{billportUrl}}"
+              ],
+              "path": [
+                "admin",
+                "chaos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Webhook deliveries for an invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{billportUrl}}/admin/deliveries?externalId={{externalId}}",
+              "host": [
+                "{{billportUrl}}"
+              ],
+              "path": [
+                "admin",
+                "deliveries?externalId={{externalId}}"
               ]
             }
           }

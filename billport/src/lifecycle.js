@@ -10,7 +10,7 @@ const randomStepMs = () => (chaos.minStepSec + Math.random() * (chaos.maxStepSec
 
 function nextStatus(current) {
   if (current !== 'VIEWED') return NEXT[current];
-  return chance(0.8) ? 'PAID' : 'FAILED';
+  return chance(chaos.paidRate) ? 'PAID' : 'FAILED';
 }
 
 async function scheduleWebhook(invoice, sendAt) {

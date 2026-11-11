@@ -17,6 +17,7 @@ module.exports.chaos = {
   duplicateRate: 0.2, // webhook delivered twice with the same eventId
   outOfOrderRate: 0.25, // VIEWED held back until after the final event
   badSignatureRate: 0.1, // first delivery attempt signed with the wrong secret
+  paidRate: 0.8, // VIEWED -> PAID, otherwise FAILED
   minStepSec: 5, // random gap between lifecycle steps
   maxStepSec: 30,
   webhooksEnabled: true, // false = drop every webhook (reconciliation demo)
