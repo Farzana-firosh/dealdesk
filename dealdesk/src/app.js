@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const { notFound, errorHandler } = require('./common/middleware/errorHandler');
+require('./database/models');
 
 function createApp() {
   const app = express();

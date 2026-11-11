@@ -8,6 +8,7 @@ const Role = require('../modules/roles/role.model');
 const User = require('../modules/users/user.model');
 const Customer = require('../modules/customers/customer.model');
 const Product = require('../modules/products/product.model');
+const Deal = require('../modules/deals/deal.model');
 
 const PASSWORD = 'Password123!';
 
@@ -69,22 +70,30 @@ async function seed() {
 
   const managerA = await user('Omar Manager', 'manager.a@dealdesk.test', 'sales_manager', branchA);
   const managerB = await user('Sara Manager', 'manager.b@dealdesk.test', 'sales_manager', branchB);
-  await user('Aisha Exec', 'exec.a@dealdesk.test', 'sales_exec', branchA, managerA);
-  await user('Ravi Exec', 'exec.b@dealdesk.test', 'sales_exec', branchB, managerB);
+  const execA = await user('Aisha Exec', 'exec.a@dealdesk.test', 'sales_exec', branchA, managerA);
+  const execB = await user('Ravi Exec', 'exec.b@dealdesk.test', 'sales_exec', branchB, managerB);
   await user('Fatima Finance', 'finance@dealdesk.test', 'finance', branchA);
   await user('Adam Admin', 'admin@dealdesk.test', 'admin', branchA);
 
-  await Customer.create([
+  const customers = await Customer.create([
     { name: 'Gulf Construction LLC', email: 'ap@gulfconstruction.test', branchId: branchA._id },
     { name: 'Desert Logistics', email: 'billing@desertlogistics.test', branchId: branchB._id },
     { name: 'Marina Facilities', email: 'finance@marinafacilities.test', branchId: branchA._id },
   ]);
 
-  await Product.create([
+  const products = await Product.create([
     { sku: 'EXC-200', name: 'Compact Excavator', price: 45000 },
     { sku: 'GEN-50', name: '50kVA Generator', price: 12000 },
     { sku: 'FLT-3T', name: '3 Ton Forklift', price: 28000 },
   ]);
+
+  const item = (p, quantity) => ({ productId: p._id, name: p.name, unitPrice: p.price, quantity });
+  const deal = (title, owner, customer, items) =>
+    Deal.create({ title, ownerId: owner._id, branchId: owner.branchId, customerId: customer._id, items });
+
+  await deal('Excavator fleet – Gulf Construction', execA, customers[0], [item(products[0], 2)]);
+  await deal('Generators – Marina Facilities', managerA, customers[2], [item(products[1], 3)]);
+  await deal('Forklifts – Desert Logistics', execB, customers[1], [item(products[2], 4)]);
 
   console.log(`[seed] done. All users have password: ${PASSWORD}`);
 }

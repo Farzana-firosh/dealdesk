@@ -26,14 +26,20 @@ Time budget: ~4 hrs. Priority order follows the scoring weights: Part 4 (30%) > 
 - Tests
   - [x] Login ok / wrong password 401 / invalid body 400 / no or bad token 401
   - [x] Exec → `/roles` 403, admin → 200; admin creates a new role as pure data; unknown permission key → 400
-  - [ ] Three users with `deal.view` get three different lists (Phase 3, needs deals)
-  - [ ] Scenario 01 (Phase 3)
+  - [x] Three users with `deal.view` get three different lists (exec 1 / manager 2 / finance 3)
+  - [x] Scenario 01 (tested in Phase 3)
 
 ## Phase 3 – Deals (target 20 min)
-- [ ] Deal model (owner, branch, customer, line items, discount, status)
-- [ ] `POST /deals`, `GET /deals`, `GET /deals/:id`, `PATCH /deals/:id`
-- [ ] Scope applied inside every query (list, detail, edit)
-- [ ] Status rules: only `open` deals are editable
+- [x] Deal model (owner, branch, customer, item price snapshots, discount, totals, status)
+- [x] `POST /api/deals`, `GET /api/deals`, `GET /api/deals/:id`, `PATCH /api/deals/:id`
+- [x] `GET /api/customers`, `GET /api/products` (reference data)
+- [x] Scope applied inside every query (list, detail, edit)
+- [x] Status rules: only `open` deals are editable (409 otherwise)
+- [x] Seed 3 deals (exec A, manager A, exec B)
+- Tests (17/17)
+  - [x] S01: exec A → Branch B deal 404; finance reads both
+  - [x] Same-branch colleague's deal 404 for exec; manager B → Branch A deal 404; malformed id 404
+  - [x] Create/edit by owner; other exec 404; finance 403 on edit/create; bad body / unknown product 400
 
 ## Phase 4 – Approval workflow (Part 2 · 20%) (target 50 min)
 - [ ] ApprovalConfig (bands → ordered role ids), admin `GET/PUT /approval-config`
