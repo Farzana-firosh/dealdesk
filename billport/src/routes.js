@@ -57,6 +57,18 @@ router.get('/billing/invoices/:externalId', async (req, res) => {
 });
 
 // --- demo / inspection endpoints (not part of the billing contract) ---
+// Protected by the X-Admin-Token header when ADMIN_TOKEN is set (always in production).
+function requireAdmin(req, res, next) {
+  if (!config.adminToken) return next();
+  const given = Buffer.from(req.get('X-Admin-Token') || '');
+  const expected = Buffer.from(config.adminToken);
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
+    return res.status(401).json({ error: 'Admin token required' });
+  }
+  next();
+}
+router.use('/admin', requireAdmin);
+
 router.get('/admin/chaos', (req, res) => res.json(chaos));
 router.post('/admin/chaos', express.json(), (req, res) => {
   for (const [k, v] of Object.entries(req.body)) if (k in chaos) chaos[k] = v;

@@ -1,4 +1,5 @@
 const { Server } = require('socket.io');
+const env = require('../config/env');
 const authService = require('../modules/auth/auth.service');
 const chatService = require('../modules/chat/chat.service');
 const { rooms, setIo } = require('./emitter');
@@ -13,7 +14,9 @@ const withAck = (handler) => async (payload, ack = () => {}) => {
 };
 
 function initSocket(httpServer) {
-  const io = new Server(httpServer, { cors: { origin: true } });
+  // Same allow-list as the REST API; in local dev (no CORS_ORIGIN) any origin is accepted.
+  // The JWT check below is what actually protects the connection.
+  const io = new Server(httpServer, { cors: { origin: env.corsOrigins.length ? env.corsOrigins : true } });
 
   // Rejected at the handshake: no token, no connection.
   io.use(async (socket, next) => {

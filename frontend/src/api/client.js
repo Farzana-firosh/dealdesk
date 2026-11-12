@@ -1,6 +1,10 @@
 // Thin fetch wrapper. Token is per browser tab (sessionStorage) so two tabs can be two users.
 const TOKEN_KEY = 'dealdesk.token';
 
+// Origin of the DealDesk API, e.g. https://dealdesk-api.onrender.com (no /api, no trailing slash).
+// Set at build time. Empty in local dev, where the Vite proxy forwards /api and /socket.io.
+export const API_BASE = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+
 export const tokenStore = {
   get: () => sessionStorage.getItem(TOKEN_KEY),
   set: (t) => (t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY)),
@@ -16,7 +20,7 @@ export class ApiError extends Error {
 
 async function request(method, path, body) {
   const token = tokenStore.get();
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     method,
     headers: {
       ...(body !== undefined && { 'Content-Type': 'application/json' }),

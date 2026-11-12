@@ -1,13 +1,38 @@
 require('dotenv').config({ quiet: true });
 
-module.exports = {
-  port: Number(process.env.PORT || 5000),
-  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/billport',
-  secret: process.env.BILLPORT_SECRET || 'billport-shared-secret',
-  webhookUrl: process.env.DEALDESK_WEBHOOK_URL || 'http://localhost:4000/webhooks/billport',
+// Read once at start-up. In local dev everything has a demo default; in production every value
+// must be set explicitly (no demo secret, no localhost) and all problems are reported together.
+const isProduction = process.env.NODE_ENV === 'production';
+const problems = [];
+
+const str = (name) => process.env[name]?.trim() || '';
+
+function setting(name, devFallback) {
+  const value = str(name);
+  if (!value && isProduction) problems.push(`${name} is required in production`);
+  return value || devFallback;
+}
+
+function secret(name, devFallback) {
+  const value = setting(name, devFallback);
+  if (isProduction && value && value.length < 32) problems.push(`${name} must be at least 32 random characters in production`);
+  return value;
+}
+
+const config = {
+  port: Number(str('PORT') || 5000),
+  mongoUri: setting('MONGO_URI', 'mongodb://localhost:27017/billport'),
+  secret: secret('BILLPORT_SECRET', 'billport-shared-secret'),
+  webhookUrl: setting('DEALDESK_WEBHOOK_URL', 'http://localhost:4000/webhooks/billport'),
+  // /admin/* requires the X-Admin-Token header when set. Empty = open (local dev and tests only).
+  adminToken: secret('ADMIN_TOKEN', ''),
   webhookTimeoutMs: 3000,
   webhookMaxAttempts: 5,
 };
+
+if (problems.length) throw new Error(`Invalid environment configuration:\n  - ${problems.join('\n  - ')}`);
+
+module.exports = config;
 
 // Misbehaviour knobs. Mutable at runtime via POST /admin/chaos (useful for demos).
 module.exports.chaos = {

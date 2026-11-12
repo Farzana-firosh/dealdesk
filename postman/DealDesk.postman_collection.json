@@ -20,6 +20,10 @@
     {
       "key": "billportSecret",
       "value": "billport-shared-secret"
+    },
+    {
+      "key": "billportAdminToken",
+      "value": ""
     }
   ],
   "item": [
@@ -1907,6 +1911,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
               }
             ],
             "description": "Turns off random failures and automatic webhooks so the manual webhook scenarios below are deterministic. Restored at the end.",
@@ -2122,7 +2130,7 @@
                 "exec": [
                   "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));",
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -2173,7 +2181,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -2224,7 +2232,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -2324,7 +2332,7 @@
                 "exec": [
                   "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));",
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -2376,7 +2384,7 @@
                 "exec": [
                   "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));",
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -2473,7 +2481,7 @@
                   "pm.collectionVariables.set('eventId', pm.variables.replaceIn('{{$guid}}'));",
                   "// sign the honest body, then send a modified one",
                   "const honest = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(honest, pm.collectionVariables.get('billportSecret')).toString());",
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(honest, pm.variables.get('billportSecret')).toString());",
                   "pm.request.body.raw = pm.request.body.raw.replace('\"sequence\":3', '\"sequence\":99');"
                 ]
               }
@@ -3047,7 +3055,7 @@
                 "exec": [
                   "pm.collectionVariables.set('idemKey', 'postman-' + Date.now());",
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -3103,7 +3111,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "const raw = pm.variables.replaceIn(pm.request.body.raw);",
-                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.collectionVariables.get('billportSecret')).toString());"
+                  "pm.collectionVariables.set('signature', CryptoJS.HmacSHA256(raw, pm.variables.get('billportSecret')).toString());"
                 ]
               }
             },
@@ -3239,7 +3247,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
+              }
+            ],
             "url": {
               "raw": "{{billportUrl}}/admin/invoices",
               "host": [
@@ -3267,7 +3280,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
+              }
+            ],
             "url": {
               "raw": "{{billportUrl}}/admin/deliveries",
               "host": [
@@ -3295,7 +3313,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
+              }
+            ],
             "url": {
               "raw": "{{billportUrl}}/admin/chaos",
               "host": [
@@ -3327,6 +3350,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
               }
             ],
             "body": {
@@ -3369,6 +3396,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
               }
             ],
             "description": "BillPort keeps advancing invoices but drops every webhook. The reconciliation job repairs the status after RECONCILE_STALE_MINUTES.",
@@ -3407,6 +3438,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
               }
             ],
             "description": "Makes webhook replays (S06–S08) deterministic: only the webhooks you send arrive.",
@@ -3445,6 +3480,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
               }
             ],
             "body": {
@@ -3478,7 +3517,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Admin-Token",
+                "value": "{{billportAdminToken}}"
+              }
+            ],
             "url": {
               "raw": "{{billportUrl}}/admin/deliveries?externalId={{externalId}}",
               "host": [

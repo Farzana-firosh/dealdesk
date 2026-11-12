@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { API_BASE } from '../api/client';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
@@ -30,7 +31,9 @@ export function SocketProvider({ children }) {
 
   useEffect(() => {
     if (!token) return undefined;
-    const s = io({ auth: { token } });
+    // Same origin as the REST calls; without VITE_API_URL it connects to the page origin (dev proxy).
+    const options = { auth: { token } };
+    const s = API_BASE ? io(API_BASE, options) : io(options);
     s.on('connect', () => setConnected(true));
     s.on('disconnect', () => setConnected(false));
     s.on('notification', (n) => {
