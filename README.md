@@ -57,6 +57,21 @@ cd frontend && npm install && npm run dev                              # termina
 
 The seed also creates 3 customers, 3 products, 3 deals (each with a chat thread) and the approval config.
 
+### Production settings
+
+With `NODE_ENV=production` both apps validate their configuration at start-up and refuse to start, listing every problem, if a value is missing or a secret is weak. They never fall back to localhost or the demo secret.
+
+| App | Required in production |
+|---|---|
+| `dealdesk` | `MONGO_URI` (with the database name), `JWT_SECRET` and `BILLPORT_SECRET` (32+ random characters), `BILLPORT_URL`, `CORS_ORIGIN` (exact frontend origin) |
+| `billport` | `MONGO_URI`, `BILLPORT_SECRET` (same value as DealDesk), `DEALDESK_WEBHOOK_URL`, `ADMIN_TOKEN` |
+| `frontend` (build time) | `VITE_API_URL`: the API origin only, e.g. `https://dealdesk-api.example.com` (no `/api`). REST and Socket.IO both use it |
+
+- **CORS:** only the origins in `CORS_ORIGIN` get CORS headers, for both the REST API and the Socket.IO handshake. The JWT travels in the `Authorization` header, so no cookies or credentials mode are involved. Webhooks are server-to-server and need no CORS.
+- **BillPort admin endpoints** (`/admin/*`, the chaos controls) require the header `X-Admin-Token: <ADMIN_TOKEN>` when `ADMIN_TOKEN` is set. The Postman collection sends it from the `billportAdminToken` variable, which is empty locally, where the endpoints stay open.
+- **Postman against a deployment:** set `baseUrl`, `billportUrl`, `billportSecret` and `billportAdminToken` in a Postman environment. Never commit real values.
+- Each `.env.example` documents its variables and how to generate a secret.
+
 ### Project layout
 ```
 dealdesk/src
