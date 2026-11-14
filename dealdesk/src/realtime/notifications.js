@@ -3,6 +3,7 @@ const { bus, EVENTS } = require('../common/events');
 const { toUser, toDeal, notify } = require('./emitter');
 const User = require('../modules/users/user.model');
 const Role = require('../modules/roles/role.model');
+const logger = require('../common/logger');
 
 // Users who should act on the request's current step: holders of that role whose
 // discount.approve scope covers the deal's branch. Resolved in the query, not by filtering.
@@ -58,7 +59,7 @@ function onChatMessage({ dealId, message, participantIds }) {
   participantIds.forEach((id) => toUser(id, 'thread:updated', { dealId, lastMessage: message }));
 }
 
-const safe = (fn) => (payload) => Promise.resolve(fn(payload)).catch((err) => console.error('[notifications]', err));
+const safe = (fn) => (payload) => Promise.resolve(fn(payload)).catch((err) => logger.error({ err }, 'notification delivery failed'));
 
 function registerNotificationHandlers() {
   bus.on(EVENTS.DISCOUNT_REQUESTED, safe(onDiscountRequested));

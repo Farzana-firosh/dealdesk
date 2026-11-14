@@ -42,7 +42,7 @@ cd frontend && npm install && npm run dev                              # termina
 ```
 
 - **Demo UI:** http://localhost:5173. Vite proxies `/api` and `/socket.io` to the API, so no CORS setup is needed. The login is stored per tab, so you can open several tabs and log in as a different user in each.
-- **Automated tests:** `cd dealdesk && npm test`. 58 tests (Node's built-in test runner, Supertest, and an in-memory MongoDB from mongodb-memory-server) cover authentication, RBAC and data scope, approval chains and races, exactly-once conversion, the push worker against a stubbed BillPort, webhooks and reconciliation. No database or running services needed. `npm run lint` runs ESLint. GitHub Actions runs both, plus the BillPort syntax check and the frontend build, on every pull request (`.github/workflows/ci.yml`). It is CI only; Render still deploys.
+- **Automated tests:** `cd dealdesk && npm test`. 69 tests (Node's built-in test runner, Supertest, and an in-memory MongoDB from mongodb-memory-server) cover authentication, RBAC and data scope, approval chains and races, exactly-once conversion, the push worker against a stubbed BillPort, webhooks and reconciliation, security headers, rate limits and log redaction. No database or running services needed. `npm run lint` runs ESLint. GitHub Actions runs both, plus the BillPort syntax check and the frontend build, on every pull request (`.github/workflows/ci.yml`). It is CI only; Render still deploys.
 - **Postman:** import `postman/DealDesk.postman_collection.json`, run `npm run seed`, then run folders 0–8 in order. Every request asserts its expected result. The full run is 88 requests and 115 assertions, all passing locally and against Docker.
 
 **Seed users** (password `Password123!`, all `@dealdesk.test`):
@@ -72,6 +72,15 @@ With `NODE_ENV=production` both apps validate their configuration at start-up an
 - **BillPort admin endpoints** (`/admin/*`, the chaos controls) require the header `X-Admin-Token: <ADMIN_TOKEN>` when `ADMIN_TOKEN` is set. The Postman collection sends it from the `billportAdminToken` variable, which is empty locally, where the endpoints stay open.
 - **Postman against a deployment:** set `baseUrl`, `billportUrl`, `billportSecret` and `billportAdminToken` in a Postman environment. Never commit real values.
 - Each `.env.example` documents its variables and how to generate a secret.
+
+### Security and logging
+- **Headers:** Helmet sets the standard security headers (HSTS, nosniff, CSP, frame protection) and removes `X-Powered-By`.
+- **Rate limits count failures only:** 10 failed sign-ins per IP per 15 minutes, and 30 rejected webhooks per IP per minute, then `429` with a standard `RateLimit` header. Real users and BillPort's valid webhooks are never throttled. Counters are in memory, which fits a single instance; several instances would need a shared store such as Redis.
+- **Behind Render's load balancer** the API trusts exactly one proxy hop in production, so rate limits see the real client IP and clients cannot spoof it.
+- **Login:** unknown emails still go through a bcrypt comparison, so response times don't reveal which accounts exist. Tokens must be HS256; other algorithms, including `none`, are rejected.
+- **Errors:** unexpected errors return only `Internal server error` and a `requestId`. The details go to the log under that id.
+- **Logs:** pino writes one JSON line per event (`LOG_LEVEL`). Each request has an id, also returned as `X-Request-Id`. Authorization headers, cookies, webhook signatures, the BillPort admin token, passwords and tokens are redacted before anything is written.
+- **Rejected webhooks** are logged with their size and SHA-256 only, never the body.
 
 ### Project layout
 ```
@@ -235,7 +244,7 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 2. A persisted `notifications` collection, with a read API and replay on reconnect.
 3. A MongoDB replica set and transactions for convert and for discount requests. A transactional outbox for domain events.
 4. An integration-log retention policy (TTL index) and a small admin view of failed pushes, with bulk retry.
-5. Rate limiting on login and webhooks, plus Helmet and structured logging (pino) with a request id.
+5. ~~Rate limiting on login and webhooks, plus Helmet and structured logging (pino) with a request id.~~ Done: see *Security and logging*.
 6. Pagination on the list endpoints and a TypeScript migration.
 
 ---

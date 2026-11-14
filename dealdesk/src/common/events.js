@@ -2,6 +2,7 @@
 // the realtime layer subscribes and decides who gets notified.
 // Used only for notifications, never for critical processing.
 const { EventEmitter } = require('events');
+const logger = require('./logger');
 
 const EVENTS = {
   DISCOUNT_REQUESTED: 'discount.requested',
@@ -17,7 +18,7 @@ function publish(event, payload) {
   try {
     bus.emit(event, payload);
   } catch (err) {
-    console.error(`[events] listener failed for ${event}`, err);
+    logger.error({ err, event }, 'event listener failed');
   }
 }
 

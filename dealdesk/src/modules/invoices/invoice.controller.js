@@ -33,7 +33,8 @@ async function billportWebhook(req, res) {
   res.status(result.status).json({ received: result.status === 200 });
 
   if (result.eventId) {
-    setImmediate(() => webhookService.processEvent(result.eventId).catch((err) => console.error('[webhook]', err)));
+    // req.log keeps the request id on the line; the sweep job retries the event anyway
+    setImmediate(() => webhookService.processEvent(result.eventId).catch((err) => req.log.error({ err }, 'webhook processing failed')));
   }
 }
 

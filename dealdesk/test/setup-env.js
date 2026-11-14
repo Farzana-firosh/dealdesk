@@ -7,3 +7,4 @@ process.env.BILLPORT_SECRET = 'test-billport-secret';
 process.env.BILLPORT_URL = 'http://billport.invalid';
 process.env.PUSH_BASE_DELAY_MS = '1000';
 process.env.RECONCILE_STALE_MINUTES = '1';
+process.env.LOG_LEVEL = 'silent';

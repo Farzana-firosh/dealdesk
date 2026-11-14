@@ -4,13 +4,19 @@ const env = require('../../config/env');
 const User = require('../users/user.model');
 const AppError = require('../../common/errors/AppError');
 
+const JWT_ALGORITHM = 'HS256';
+
+// Compared against when the email is unknown, so a login takes the same time whether or not
+// the account exists (otherwise the response time reveals which emails are registered).
+const DUMMY_HASH = bcrypt.hashSync('no-such-user', 10);
+
 function signToken(user) {
-  return jwt.sign({ sub: String(user._id) }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
+  return jwt.sign({ sub: String(user._id) }, env.jwtSecret, { algorithm: JWT_ALGORITHM, expiresIn: env.jwtExpiresIn });
 }
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, env.jwtSecret);
+    return jwt.verify(token, env.jwtSecret, { algorithms: [JWT_ALGORITHM] });
   } catch {
     throw AppError.unauthorized('Invalid or expired token');
   }
@@ -39,8 +45,8 @@ async function login(email, password) {
     .select('+passwordHash')
     .populate('roleId');
 
-  const valid = user && (await bcrypt.compare(password, user.passwordHash));
-  if (!valid) throw AppError.unauthorized('Invalid email or password');
+  const passwordOk = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !passwordOk) throw AppError.unauthorized('Invalid email or password');
 
   return { token: signToken(user), user: toPrincipal(user) };
 }

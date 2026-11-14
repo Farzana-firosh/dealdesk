@@ -26,9 +26,11 @@ function errorHandler(err, req, res, next) {
     message = 'Duplicate value';
   }
 
+  // Unexpected errors: full details go to the log only; the client gets the request id to quote.
   if (status >= 500) {
-    console.error(err);
-    message = 'Internal server error';
+    req.log.error({ err }, 'unhandled error');
+    res.status(status).json({ error: 'Internal server error', requestId: req.id });
+    return;
   }
 
   res.status(status).json({ error: message, ...(details && { details }) });

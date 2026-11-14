@@ -1,4 +1,5 @@
 const env = require('../../config/env');
+const logger = require('../../common/logger');
 const { runEvery } = require('../../common/utils/interval');
 const { runPushCycle } = require('./invoice-push.job');
 const { runReconciliation } = require('./reconcile.job');
@@ -8,7 +9,10 @@ function startInvoiceJobs() {
   runEvery('push', env.push.pollIntervalMs, runPushCycle);
   runEvery('webhook-sweep', 5000, sweepPendingEvents);
   runEvery('reconcile', env.reconcile.intervalMs, runReconciliation);
-  console.log(`[jobs] push every ${env.push.pollIntervalMs}ms, reconcile every ${env.reconcile.intervalMs}ms (stale after ${env.reconcile.staleMinutes} min)`);
+  logger.info(
+    { pushEveryMs: env.push.pollIntervalMs, reconcileEveryMs: env.reconcile.intervalMs, staleMinutes: env.reconcile.staleMinutes },
+    'invoice jobs started',
+  );
 }
 
 module.exports = { startInvoiceJobs };

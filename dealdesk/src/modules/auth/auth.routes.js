@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const Joi = require('joi');
 const { validate } = require('../../common/middleware/validate');
+const { loginLimit } = require('../../common/middleware/rateLimit');
 const { authenticate } = require('./auth.middleware');
 const controller = require('./auth.controller');
 
@@ -10,7 +11,7 @@ const loginSchema = Joi.object({
 });
 
 const router = Router();
-router.post('/login', validate(loginSchema), controller.login);
+router.post('/login', loginLimit, validate(loginSchema), controller.login);
 router.get('/me', authenticate, controller.me);
 
 module.exports = router;

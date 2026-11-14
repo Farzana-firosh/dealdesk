@@ -2,6 +2,7 @@ const env = require('../../config/env');
 const Invoice = require('./invoice.model');
 const IntegrationLog = require('./integration-log.model');
 const billport = require('./billport.client');
+const logger = require('../../common/logger');
 const { advanceStatus, mapExternalStatus } = require('./invoice-status.service');
 
 /**
@@ -47,7 +48,7 @@ async function reconcileOne(invoice) {
     error: result.error,
     durationMs: result.durationMs,
   });
-  console.log(`[reconcile] ${invoice.number}: ${outcome}`);
+  logger.info({ invoice: invoice.number, outcome }, 'invoice reconciled');
 }
 
 module.exports = { runReconciliation };

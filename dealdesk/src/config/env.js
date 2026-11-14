@@ -49,7 +49,9 @@ for (const origin of corsOrigins) {
 }
 
 const env = {
+  isProduction,
   port: num('PORT', 4000),
+  logLevel: str('LOG_LEVEL', 'info'), // fatal | error | warn | info | debug | silent
   mongoUri,
   corsOrigins,
   jwtSecret: secret('JWT_SECRET'),

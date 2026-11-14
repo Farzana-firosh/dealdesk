@@ -2,6 +2,7 @@ const env = require('../../config/env');
 const Invoice = require('./invoice.model');
 const IntegrationLog = require('./integration-log.model');
 const billport = require('./billport.client');
+const logger = require('../../common/logger');
 
 const LOCK_MS = env.billport.timeoutMs * 3; // a crashed worker's claim expires after this
 
@@ -73,7 +74,10 @@ async function pushOne(invoice) {
     error: result.error,
     durationMs: result.durationMs,
   });
-  console.log(`[push] ${invoice.number} attempt ${attempt}: ${result.ok ? 'ok' : result.error || result.status} -> ${outcome}`);
+  logger[result.ok ? 'info' : 'warn'](
+    { invoice: invoice.number, attempt, status: result.status, error: result.error, outcome },
+    'invoice push attempt',
+  );
 }
 
 async function runPushCycle() {
