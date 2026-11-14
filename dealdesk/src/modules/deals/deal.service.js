@@ -1,5 +1,5 @@
 const Deal = require('./deal.model');
-const Customer = require('../customers/customer.model');
+const { assertCustomerInScope } = require('../customers/customer.service');
 const Product = require('../products/product.model');
 const AppError = require('../../common/errors/AppError');
 const { scopeFilter } = require('../auth/scope');
@@ -23,10 +23,6 @@ async function buildItems(items) {
   });
 }
 
-async function assertCustomer(customerId) {
-  if (!(await Customer.exists({ _id: customerId }))) throw AppError.badRequest('Unknown customer');
-}
-
 function listDeals(user, scope, { status } = {}) {
   const filter = { ...scopeFilter(user, scope), ...(status && { status }) };
   return Deal.find(filter).sort({ createdAt: -1 }).populate(POPULATE).lean();
@@ -41,7 +37,7 @@ async function getDeal(user, scope, dealId, { populate = true } = {}) {
 }
 
 async function createDeal(user, { title, customerId, items }) {
-  await assertCustomer(customerId);
+  await assertCustomerInScope(user, customerId); // no deals for another branch's customers
   const deal = await Deal.create({
     title,
     customerId,
@@ -59,7 +55,7 @@ async function updateDeal(user, scope, dealId, changes) {
 
   if (changes.title) deal.title = changes.title;
   if (changes.customerId) {
-    await assertCustomer(changes.customerId);
+    await assertCustomerInScope(user, changes.customerId);
     deal.customerId = changes.customerId;
   }
   if (changes.items) deal.items = await buildItems(changes.items);

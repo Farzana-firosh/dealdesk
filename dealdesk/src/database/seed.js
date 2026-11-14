@@ -53,12 +53,17 @@ const ROLES = [
   },
 ];
 
-async function seed() {
-  await connectDb();
+// Wipes the connected database and rebuilds the demo data (`npm run seed`).
+async function resetAndSeed() {
   await mongoose.connection.dropDatabase();
   // dropDatabase removes indexes too; rebuild them from the schemas
   await Promise.all(Object.values(mongoose.models).map((m) => m.syncIndexes()));
+  await seedData();
+}
 
+// Inserts the demo data into an empty database. The tests call this after emptying the
+// collections, which keeps the indexes and is much faster than dropping the database.
+async function seedData() {
   const [branchA, branchB] = await Branch.create([
     { name: 'Dubai', code: 'DXB' },
     { name: 'Abu Dhabi', code: 'AUH' },
@@ -111,13 +116,17 @@ async function seed() {
     await deal('Forklifts – Desert Logistics', execB, customers[1], [item(products[2], 4)]),
   ];
   for (const d of deals) await ensureThread(d._id);
-
-  console.log(`[seed] done. All users have password: ${PASSWORD}`);
 }
 
-seed()
-  .catch((err) => {
-    console.error('[seed] failed', err);
-    process.exitCode = 1;
-  })
-  .finally(() => mongoose.disconnect());
+module.exports = { resetAndSeed, seedData, PASSWORD };
+
+if (require.main === module) {
+  connectDb()
+    .then(resetAndSeed)
+    .then(() => console.log(`[seed] done. All users have password: ${PASSWORD}`))
+    .catch((err) => {
+      console.error('[seed] failed', err);
+      process.exitCode = 1;
+    })
+    .finally(() => mongoose.disconnect());
+}

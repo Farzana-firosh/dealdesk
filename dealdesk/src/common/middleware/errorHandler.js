@@ -4,7 +4,7 @@ function notFound(req, res, next) {
   next(AppError.notFound(`Route ${req.method} ${req.originalUrl} not found`));
 }
 
-// eslint-disable-next-line no-unused-vars
+// Express recognises an error handler by its four arguments, so `next` must stay.
 function errorHandler(err, req, res, next) {
   let status = err.status || 500;
   let message = err.message;
