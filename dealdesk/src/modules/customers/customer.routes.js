@@ -1,10 +1,11 @@
 const { Router } = require('express');
-const Customer = require('./customer.model');
+const { listCustomers } = require('./customer.service');
 
-// Reference data for building deals; any authenticated user may read it.
+// Reference data for building deals, limited to the customers of the user's branch
+// (or all branches when their deal.view scope is "all").
 const router = Router();
 router.get('/', async (req, res) => {
-  res.json({ customers: await Customer.find().sort({ name: 1 }).lean() });
+  res.json({ customers: await listCustomers(req.user) });
 });
 
 module.exports = router;

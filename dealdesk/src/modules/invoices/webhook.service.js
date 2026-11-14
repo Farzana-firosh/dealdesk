@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const env = require('../../config/env');
 const { verify } = require('../../common/utils/hmac');
 const WebhookEvent = require('./webhook-event.model');
@@ -29,6 +30,13 @@ function parseEvent(raw) {
   }
 }
 
+// A rejected request is unauthenticated input: record that it happened and a fingerprint to
+// correlate repeats, never the body itself (up to 100 kB each would let anyone fill the database).
+const fingerprint = (rawBody) => ({
+  bytes: rawBody.length,
+  sha256: crypto.createHash('sha256').update(rawBody).digest('hex'),
+});
+
 /**
  * Called by the route with the *raw* body. Returns the HTTP status to answer with.
  * The only DB work done inline is one insert into the inbox (needed for dedup);
@@ -36,13 +44,14 @@ function parseEvent(raw) {
  */
 async function receive(rawBody, signature) {
   if (!verify(rawBody, signature, env.billport.secret)) {
-    await log(null, 'rejected_invalid_signature', { request: { raw: rawBody.toString('utf8') }, response: { status: 401 } });
+    await log(null, 'rejected_invalid_signature', { request: fingerprint(rawBody), response: { status: 401 } });
     return { status: 401 };
   }
 
   const event = parseEvent(rawBody);
   if (!event) {
-    await log(null, 'rejected_malformed', { request: { raw: rawBody.toString('utf8') }, response: { status: 400 } });
+    // signed by BillPort, so trusted but unusable: the fingerprint is enough to ask them about it
+    await log(null, 'rejected_malformed', { request: fingerprint(rawBody), response: { status: 400 } });
     return { status: 400 };
   }
 

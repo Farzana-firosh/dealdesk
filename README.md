@@ -42,7 +42,8 @@ cd frontend && npm install && npm run dev                              # termina
 ```
 
 - **Demo UI:** http://localhost:5173. Vite proxies `/api` and `/socket.io` to the API, so no CORS setup is needed. The login is stored per tab, so you can open several tabs and log in as a different user in each.
-- **Postman:** import `postman/DealDesk.postman_collection.json`, run `npm run seed`, then run folders 0–8 in order. Every request asserts its expected result. The full run is 84 requests and 111 assertions, all passing locally and against Docker.
+- **Automated tests:** `cd dealdesk && npm test`. 58 tests (Node's built-in test runner, Supertest, and an in-memory MongoDB from mongodb-memory-server) cover authentication, RBAC and data scope, approval chains and races, exactly-once conversion, the push worker against a stubbed BillPort, webhooks and reconciliation. No database or running services needed. `npm run lint` runs ESLint. GitHub Actions runs both, plus the BillPort syntax check and the frontend build, on every pull request (`.github/workflows/ci.yml`). It is CI only; Render still deploys.
+- **Postman:** import `postman/DealDesk.postman_collection.json`, run `npm run seed`, then run folders 0–8 in order. Every request asserts its expected result. The full run is 88 requests and 115 assertions, all passing locally and against Docker.
 
 **Seed users** (password `Password123!`, all `@dealdesk.test`):
 
@@ -227,11 +228,10 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 **Not finished:**
 - **Notifications aren't persisted.** A user who's offline misses the live notification, although `GET /approvals/pending`, invoice status and unread counts still show the current state.
 - **Cancelling is local only.** BillPort's contract has no cancel endpoint, so a cancelled invoice ignores later BillPort events.
-- **No automated test suite in the repo.** Workflows were verified with throwaway scripts and the asserted Postman collection, run with Newman, rather than Jest or Supertest.
 - **Plain JavaScript, not TypeScript.**
 
 **With another day:**
-1. A Jest + Supertest + mongodb-memory-server suite covering scope, approval races and webhook ordering, and run in CI.
+1. ~~An automated test suite run in CI.~~ Done: see *Automated tests* above.
 2. A persisted `notifications` collection, with a read API and replay on reconnect.
 3. A MongoDB replica set and transactions for convert and for discount requests. A transactional outbox for domain events.
 4. An integration-log retention policy (TTL index) and a small admin view of failed pushes, with bulk retry.
