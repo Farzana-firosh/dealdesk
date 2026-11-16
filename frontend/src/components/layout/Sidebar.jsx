@@ -12,7 +12,10 @@ const NAV = [
   { to: '/approvals', label: 'Approvals', icon: 'approvals', permission: 'discount.approve', badge: 'pending' },
   { to: '/invoices', label: 'Invoices', icon: 'invoices', permission: 'invoice.view' },
 ];
-const ADMIN_NAV = [{ to: '/settings/approvals', label: 'Approval rules', icon: 'settings', permission: 'approval_config.manage' }];
+const ADMIN_NAV = [
+  { to: '/settings/users', label: 'Users', icon: 'users', permission: 'user.manage' },
+  { to: '/settings/approvals', label: 'Approval rules', icon: 'settings', permission: 'approval_config.manage' },
+];
 
 function useCounts(can) {
   const { data, reload } = useAsync(async () => {

@@ -7,6 +7,7 @@ const request = require('supertest');
 const Role = require('../src/modules/roles/role.model');
 const User = require('../src/modules/users/user.model');
 const { BUILT_IN_ROLES } = require('../src/modules/roles/role.service');
+const { SEEDED_EMAILS } = require('../src/modules/auth/demo');
 const { app, useDatabase, loginAll } = require('./helpers');
 
 useDatabase();
@@ -60,6 +61,28 @@ describe('demo protection', () => {
     assert.equal(res.status, 403);
     assert.match(res.body.error, /read-only in the demo/);
     assert.equal((await Role.findById(admin._id).lean()).permissions.length, admin.permissions.length);
+  });
+
+  test('every seeded account is on the protected list', async () => {
+    const seeded = (await User.find().lean()).map((u) => u.email).sort();
+    assert.deepEqual(seeded, [...SEEDED_EMAILS].sort());
+  });
+
+  test('seeded accounts are read-only, users added by visitors are not', async () => {
+    const { as } = await loginAll();
+    const users = (await as('admin').get('/api/users')).body.users;
+    const exec = users.find((u) => u.email === 'exec.a@dealdesk.test');
+    assert.equal(exec.readOnly, true);
+
+    const res = await as('admin').patch(`/api/users/${exec._id}`, { active: false });
+    assert.equal(res.status, 403);
+    assert.match(res.body.error, /read-only/);
+
+    const created = await as('admin').post('/api/users', {
+      name: 'Visitor', email: 'visitor@example.com', password: 'Visitor-123', roleId: exec.role._id, branchId: exec.branch._id,
+    });
+    assert.equal(created.body.user.readOnly, false);
+    assert.equal((await as('admin').patch(`/api/users/${created.body.user._id}`, { active: false })).status, 200);
   });
 
   test('custom roles can still be created and edited', async () => {

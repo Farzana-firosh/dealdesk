@@ -9,6 +9,7 @@ const PERMISSIONS = {
   'invoice.cancel': 'Cancel invoices',
   'chat.send': 'Read and send messages in deal threads',
   'role.manage': 'Manage roles and their permissions',
+  'user.manage': 'Add users, change their role, branch or manager, reset passwords, deactivate',
   'approval_config.manage': 'Manage the discount approval configuration',
 };
 

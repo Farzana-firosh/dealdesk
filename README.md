@@ -81,7 +81,7 @@ With `NODE_ENV=production` both apps validate their configuration at start-up an
 - **Errors:** unexpected errors return only `Internal server error` and a `requestId`. The details go to the log under that id.
 - **Logs:** pino writes one JSON line per event (`LOG_LEVEL`). Each request has an id, also returned as `X-Request-Id`. Authorization headers, cookies, webhook signatures, the BillPort admin token, passwords and tokens are redacted before anything is written.
 - **Rejected webhooks** are logged with their size and SHA-256 only, never the body.
-- **Demo mode** (`DEMO_MODE=true`, off by default): the login page offers one-click sign-in as the seeded personas. The browser only gets a persona key; the server maps it to the account, so no email or password ships with the UI. Built-in roles become read-only so one visitor can't break the demo for the next, while custom roles stay editable. With demo mode off, `POST /api/auth/demo` returns 404.
+- **Demo mode** (`DEMO_MODE=true`, off by default): the login page offers one-click sign-in as the seeded personas. The browser only gets a persona key; the server maps it to the account, so no email or password ships with the UI. Built-in roles and the seeded accounts become read-only so one visitor can't break the demo for the next, while custom roles and newly added users stay editable. With demo mode off, `POST /api/auth/demo` returns 404.
 
 ### Project layout
 ```
@@ -98,7 +98,7 @@ dealdesk/src
 │   ├── chat/          threads, messages, unread counts
 │   └── users/ branches/ customers/ products/
 ├── realtime/          Socket.IO server, room emitter, event → notification mapping
-└── database/          model registry, seed
+└── database/          model registry, seed, migrations
 
 frontend/src
 ├── api/               fetch wrapper (JWT header, per-tab token)
@@ -117,9 +117,16 @@ Controllers stay thin and the business rules live in the services. The UI only *
 ```js
 { name: 'sales_manager', permissions: [ { key: 'deal.view', scope: 'branch' }, { key: 'discount.approve', scope: 'branch' }, ... ] }
 ```
-- Permission keys (`deal.view`, `deal.edit`, `discount.approve`, `invoice.view`, `invoice.issue`, `invoice.cancel`, `chat.send`, `role.manage`, `approval_config.manage`) are defined in code (`modules/roles/permissions.js`), because the code is what checks them.
+- Permission keys (`deal.view`, `deal.edit`, `discount.approve`, `invoice.view`, `invoice.issue`, `invoice.cancel`, `chat.send`, `role.manage`, `user.manage`, `approval_config.manage`) are defined in code (`modules/roles/permissions.js`), because the code is what checks them.
 - Role names never appear in business logic. Adding a role is a `POST /api/roles` call, with no code change.
 - The JWT holds only the user id. User and role are reloaded on every request, so a permission change takes effect immediately.
+
+**Managing users** (`user.manage`, the Users screen) follows three rules (`modules/users/user.service.js`):
+- **No escalation:** you can only give a role whose every permission you hold at the same or a wider scope, and only edit someone whose current access you hold. A branch-scoped user manager stays in their branch.
+- **No self-service access changes:** nobody changes their own role, branch, manager, status or password there, so nobody can promote or lock out themselves. Together these mean the last person who can manage everyone cannot be removed.
+- **Deactivate, never delete:** deals and history keep their owner. A deactivated user's next request gets 401 and their live sockets are closed.
+
+**Migrations.** The hosted database is never reseeded, so data changes for existing databases are steps in `src/database/migrate.js`. They run at start-up (or `npm run migrate`), each one once, recorded in the `migrations` collection, and each written so that running it again changes nothing. The first one gives the existing `admin` role `user.manage`.
 
 **One guard.** Every protected route uses `authorize('<permission>')` (`modules/auth/auth.middleware.js`). It returns 403 if the user's role lacks the permission. Otherwise it sets `req.scope` to `own`, `branch` or `all`.
 
@@ -280,8 +287,9 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 
 | Area | Endpoints |
 |---|---|
-| Auth | `POST /api/auth/login`, `GET /api/auth/me` |
+| Auth | `POST /api/auth/login`, `GET /api/auth/me`, `GET/POST /api/auth/demo` (demo mode only) |
 | Roles (admin) | `GET /api/roles/permissions`, `GET/POST /api/roles`, `PATCH /api/roles/:id` |
+| Users (admin) | `GET /api/users`, `GET /api/users/options`, `POST /api/users`, `PATCH /api/users/:id` |
 | Reference | `GET /api/customers`, `GET /api/products` |
 | Deals | `GET/POST /api/deals`, `GET/PATCH /api/deals/:id`, `POST /api/deals/:id/discount-request`, `GET /api/deals/:id/approvals`, `POST /api/deals/:id/convert` |
 | Approvals | `GET /api/approvals/pending`, `POST /api/approvals/:id/approve`, `POST /api/approvals/:id/reject` |

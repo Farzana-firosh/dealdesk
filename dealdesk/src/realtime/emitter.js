@@ -24,4 +24,9 @@ function notify(userId, type, data) {
   toUser(userId, 'notification', { type, data, at: new Date().toISOString() });
 }
 
-module.exports = { rooms, setIo, toUser, toDeal, notify };
+// Closes a user's open sockets; their next handshake is checked against the database again.
+function disconnectUser(userId) {
+  io?.in(rooms.user(String(userId))).disconnectSockets(true);
+}
+
+module.exports = { rooms, setIo, toUser, toDeal, notify, disconnectUser };

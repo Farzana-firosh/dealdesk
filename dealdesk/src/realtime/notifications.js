@@ -1,6 +1,6 @@
 // Translates domain events into socket deliveries. Services never talk to Socket.IO directly.
 const { bus, EVENTS } = require('../common/events');
-const { toUser, toDeal, notify } = require('./emitter');
+const { toUser, toDeal, notify, disconnectUser } = require('./emitter');
 const User = require('../modules/users/user.model');
 const Role = require('../modules/roles/role.model');
 const logger = require('../common/logger');
@@ -66,6 +66,8 @@ function registerNotificationHandlers() {
   bus.on(EVENTS.DISCOUNT_DECIDED, safe(onDiscountDecided));
   bus.on(EVENTS.INVOICE_STATUS_CHANGED, safe(onInvoiceStatusChanged));
   bus.on(EVENTS.CHAT_MESSAGE, safe(onChatMessage));
+  // REST already rejects a deactivated user's token; this also ends their live connections
+  bus.on(EVENTS.USER_DEACTIVATED, safe(({ userId }) => disconnectUser(userId)));
 }
 
 module.exports = { registerNotificationHandlers };

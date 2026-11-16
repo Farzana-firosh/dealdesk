@@ -4,7 +4,10 @@ export const formatMoney = (n) => (n == null ? '–' : money.format(n));
 
 export const formatDate = (d) => (d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '–');
 
-export const formatTime = (d) => (d ? new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+// "sales_manager" -> "sales manager"
+export const roleLabel = (name) => name.replace(/_/g, ' ');
+
+export const formatTime =(d) => (d ? new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
 
 export function formatDay(d) {
   const date = new Date(d);

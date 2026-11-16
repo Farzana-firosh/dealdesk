@@ -153,6 +153,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 .table tbody tr:hover { background: #fafbfd; }
 .cell-title { font-weight: 500; }
 .cell-sub { font-size: 12px; color: var(--text-muted); }
+.capitalize { text-transform: capitalize; }
 .cell-actions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* ---------- modal ---------- */

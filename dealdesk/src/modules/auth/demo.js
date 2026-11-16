@@ -13,4 +13,16 @@ const publicDemoAccounts = () => DEMO_ACCOUNTS.map(({ key, label, description })
 
 const demoEmailFor = (key) => DEMO_ACCOUNTS.find((a) => a.key === key)?.email;
 
-module.exports = { DEMO_KEYS, publicDemoAccounts, demoEmailFor };
+// Every account the seed creates. Read-only in the demo so they keep working for the next visitor.
+const SEEDED_EMAILS = [
+  'exec.a@dealdesk.test',
+  'manager.a@dealdesk.test',
+  'exec.b@dealdesk.test',
+  'manager.b@dealdesk.test',
+  'finance@dealdesk.test',
+  'admin@dealdesk.test',
+];
+
+const isSeededAccount = (email) => SEEDED_EMAILS.includes(email);
+
+module.exports = { DEMO_KEYS, SEEDED_EMAILS, publicDemoAccounts, demoEmailFor, isSeededAccount };
