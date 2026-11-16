@@ -52,6 +52,8 @@ const env = {
   isProduction,
   port: num('PORT', 4000),
   logLevel: str('LOG_LEVEL', 'info'), // fatal | error | warn | info | debug | silent
+  // Public demo: one-click sign-in as seeded accounts, built-in roles read-only. Off unless "true".
+  demoMode: str('DEMO_MODE') === 'true',
   mongoUri,
   corsOrigins,
   jwtSecret: secret('JWT_SECRET'),

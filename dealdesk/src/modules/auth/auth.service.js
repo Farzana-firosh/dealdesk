@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const User = require('../users/user.model');
 const AppError = require('../../common/errors/AppError');
+const { demoEmailFor } = require('./demo');
 
 const JWT_ALGORITHM = 'HS256';
 
@@ -51,6 +52,14 @@ async function login(email, password) {
   return { token: signToken(user), user: toPrincipal(user) };
 }
 
+// Demo sign-in without a password. Only exists when DEMO_MODE is on; otherwise the route is a 404.
+async function demoLogin(accountKey) {
+  if (!env.demoMode) throw AppError.notFound();
+  const user = await User.findOne({ email: demoEmailFor(accountKey), active: true }).populate('roleId');
+  if (!user?.roleId) throw AppError.notFound('Demo account is not available');
+  return { token: signToken(user), user: toPrincipal(user) };
+}
+
 async function principalFromToken(token) {
   const { sub } = verifyToken(token);
   const user = await User.findOne({ _id: sub, active: true }).populate('roleId').lean();
@@ -60,4 +69,4 @@ async function principalFromToken(token) {
 
 const hashPassword = (plain) => bcrypt.hash(plain, 10);
 
-module.exports = { login, principalFromToken, hashPassword };
+module.exports = { login, demoLogin, principalFromToken, hashPassword };

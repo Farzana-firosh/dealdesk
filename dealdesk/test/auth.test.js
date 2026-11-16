@@ -51,6 +51,20 @@ describe('authentication', () => {
   });
 });
 
+describe('demo mode off (the default)', () => {
+  test('no demo personas are offered and demo sign-in does not exist', async () => {
+    const list = await request(app).get('/api/auth/demo');
+    assert.deepEqual(list.body, { enabled: false, accounts: [] });
+    assert.equal((await request(app).post('/api/auth/demo').send({ account: 'admin' })).status, 404);
+  });
+
+  test('built-in roles stay editable outside demo mode', async () => {
+    const { as } = await loginAll();
+    const exec = (await as('admin').get('/api/roles')).body.roles.find((r) => r.name === 'sales_exec');
+    assert.equal((await as('admin').patch(`/api/roles/${exec._id}`, { description: 'edited' })).status, 200);
+  });
+});
+
 describe('permissions', () => {
   test('only role.manage holders can manage roles', async () => {
     const { as } = await loginAll();

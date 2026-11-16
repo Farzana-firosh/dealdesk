@@ -81,6 +81,7 @@ With `NODE_ENV=production` both apps validate their configuration at start-up an
 - **Errors:** unexpected errors return only `Internal server error` and a `requestId`. The details go to the log under that id.
 - **Logs:** pino writes one JSON line per event (`LOG_LEVEL`). Each request has an id, also returned as `X-Request-Id`. Authorization headers, cookies, webhook signatures, the BillPort admin token, passwords and tokens are redacted before anything is written.
 - **Rejected webhooks** are logged with their size and SHA-256 only, never the body.
+- **Demo mode** (`DEMO_MODE=true`, off by default): the login page offers one-click sign-in as the seeded personas. The browser only gets a persona key; the server maps it to the account, so no email or password ships with the UI. Built-in roles become read-only so one visitor can't break the demo for the next, while custom roles stay editable. With demo mode off, `POST /api/auth/demo` returns 404.
 
 ### Project layout
 ```

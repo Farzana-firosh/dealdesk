@@ -1,16 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { Button, Icon, Input } from '../components/common';
-
-const DEMO_USERS = [
-  { email: 'exec.a@dealdesk.test', label: 'Sales exec · Dubai' },
-  { email: 'manager.a@dealdesk.test', label: 'Manager · Dubai' },
-  { email: 'exec.b@dealdesk.test', label: 'Sales exec · Abu Dhabi' },
-  { email: 'manager.b@dealdesk.test', label: 'Manager · Abu Dhabi' },
-  { email: 'finance@dealdesk.test', label: 'Finance' },
-  { email: 'admin@dealdesk.test', label: 'Admin' },
-];
 
 const FEATURES = [
   { icon: 'shield', title: 'Access by role and branch', text: 'Everyone sees exactly the deals they are allowed to.' },
@@ -18,32 +10,72 @@ const FEATURES = [
   { icon: 'zap', title: 'Invoices that stay in sync', text: 'Billing status updates itself after a deal is won.' },
 ];
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validate(email, password) {
+  const errors = {};
+  if (!email.trim()) errors.email = 'Enter your work email.';
+  else if (!EMAIL.test(email.trim())) errors.email = 'Enter a valid email address.';
+  if (!password) errors.password = 'Enter your password.';
+  return errors;
+}
+
+// 401 gets a friendlier wording; 429 and "server unreachable" already carry a clear message.
+const messageFor = (err) => (err.status === 401 ? 'Incorrect email or password.' : err.message);
+
+/** Demo personas from the API (empty unless it runs in demo mode), plus a "waking up" flag. */
+function useDemoAccounts() {
+  const [accounts, setAccounts] = useState([]);
+  const [waking, setWaking] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    // free hosting sleeps when idle; this first request is what wakes the API up
+    const timer = setTimeout(() => active && setWaking(true), 2500);
+    api
+      .get('/auth/demo')
+      .then((res) => active && setAccounts(res.accounts))
+      .catch(() => {}) // no demo buttons; the normal form still works
+      .finally(() => {
+        clearTimeout(timer);
+        if (active) setWaking(false);
+      });
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
+  return { accounts, waking };
+}
+
 export default function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, demoLogin } = useAuth();
+  const { accounts, waking } = useDemoAccounts();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(null); // 'form' | demo account key | null
 
   if (user) return <Navigate to="/deals" replace />;
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const run = async (what, action) => {
     setError('');
-    setBusy(true);
+    setBusy(what);
     try {
-      await login(email, password);
+      await action();
     } catch (err) {
-      setError(err.status === 400 ? 'Enter a valid email and password.' : err.message);
-    } finally {
-      setBusy(false);
+      setError(messageFor(err));
+      setBusy(null);
     }
   };
 
-  const pickDemo = (demoEmail) => {
-    setEmail(demoEmail);
-    setPassword('Password123!');
-    setError('');
+  const submit = (e) => {
+    e.preventDefault();
+    const errors = validate(email, password);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length === 0) run('form', () => login(email.trim(), password));
   };
 
   return (
@@ -72,32 +104,49 @@ export default function LoginPage() {
       </aside>
 
       <main className="login-main">
-        <form className="login-form stack" onSubmit={submit} noValidate>
-          <div>
-            <h2>Welcome back</h2>
-            <span className="muted">Sign in to continue to your workspace.</span>
+        <div className="login-panel stack">
+          <div className="brand login-brand-mobile">
+            <span className="brand-mark">D</span>
+            DealDesk
           </div>
 
-          <Input label="Work email" icon="mail" type="email" autoComplete="username" placeholder="name@company.com"
-            value={email} onChange={(e) => setEmail(e.target.value)} required />
-          <Input label="Password" icon="lock" type="password" autoComplete="current-password" placeholder="Your password"
-            value={password} onChange={(e) => setPassword(e.target.value)} required error={error} />
-
-          <Button type="submit" variant="primary" size="lg" block iconRight="arrowRight" loading={busy} disabled={!email || !password}>
-            Sign in
-          </Button>
-
-          <div>
-            <span className="faint">Demo accounts (password Password123!)</span>
-            <div className="demo-users">
-              {DEMO_USERS.map((u) => (
-                <button key={u.email} type="button" className={`chip${email === u.email ? ' active' : ''}`} onClick={() => pickDemo(u.email)}>
-                  {u.label}
-                </button>
-              ))}
+          <form className="stack" onSubmit={submit} noValidate>
+            <div>
+              <h2>Welcome back</h2>
+              <span className="muted">Sign in to continue to your workspace.</span>
             </div>
-          </div>
-        </form>
+
+            {error && <div className="form-alert" role="alert"><Icon name="info" size={16} />{error}</div>}
+            {waking && !error && (
+              <div className="form-note" role="status">Waking up the server – this can take up to a minute on free hosting.</div>
+            )}
+
+            <Input label="Work email" icon="mail" type="email" autoComplete="username" placeholder="name@company.com"
+              value={email} onChange={(e) => setEmail(e.target.value)} error={fieldErrors.email} disabled={Boolean(busy)} />
+            <Input label="Password" icon="lock" type="password" autoComplete="current-password" placeholder="Your password"
+              value={password} onChange={(e) => setPassword(e.target.value)} error={fieldErrors.password} disabled={Boolean(busy)} />
+
+            <Button type="submit" variant="primary" size="lg" block iconRight="arrowRight" loading={busy === 'form'} disabled={Boolean(busy)}>
+              Sign in
+            </Button>
+          </form>
+
+          {accounts.length > 0 && (
+            <section className="stack demo-section" aria-labelledby="demo-heading">
+              <div className="divider"><span id="demo-heading">or explore the live demo</span></div>
+              <div className="demo-grid">
+                {accounts.map((a) => (
+                  <button key={a.key} type="button" className="demo-card" disabled={Boolean(busy)}
+                    onClick={() => run(a.key, () => demoLogin(a.key))}>
+                    <b>{busy === a.key ? 'Signing in…' : a.label}</b>
+                    <span>{a.description}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="faint">Fictional, shared demo data. Each role sees different deals and actions.</p>
+            </section>
+          )}
+        </div>
       </main>
     </div>
   );
