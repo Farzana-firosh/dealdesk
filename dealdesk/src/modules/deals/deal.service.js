@@ -24,7 +24,8 @@ async function buildItems(items) {
 }
 
 function listDeals(user, scope, { status } = {}) {
-  const filter = { ...scopeFilter(user, scope), ...(status && { status }) };
+  // only a known status string reaches the query (a repeated ?status= would arrive as an array)
+  const filter = { ...scopeFilter(user, scope), ...(Deal.DEAL_STATUSES.includes(status) && { status }) };
   return Deal.find(filter).sort({ createdAt: -1 }).populate(POPULATE).lean();
 }
 
