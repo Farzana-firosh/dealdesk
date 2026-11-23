@@ -1,4 +1,5 @@
-const COLORS = ['#4f46e5', '#0891b2', '#059669', '#d97706', '#db2777', '#7c3aed', '#2563eb', '#475569'];
+// muted tones that sit with the slate/steel palette and keep white initials readable
+const COLORS = ['#354B60', '#5f7f99', '#2f6e99', '#1f7a55', '#9a5d1a', '#7a4f6b', '#4b5f71', '#101820'];
 
 const initials = (name = '?') =>
   name

@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useSocketEvent } from '../context/SocketContext';
 import useAsync from '../hooks/useAsync';
-import { Badge, Button, Card, Modal, StatusBadge, Table } from '../components/common';
-import { formatDate, formatMoney } from '../utils/format';
+import { Badge, Button, Card, Drawer, PageHeader, StatCard, StatusBadge, Table } from '../components/common';
+import { countOf, formatDate, formatMoney } from '../utils/format';
+
+const OPEN = ['pending', 'sent', 'viewed'];
 
 const OUTCOME_TONE = (o) =>
   o === 'success' || o === 'applied' || o.startsWith('repaired') ? 'success'
@@ -31,12 +33,12 @@ function LogsModal({ invoice, onClose }) {
   ];
 
   return (
-    <Modal title={invoice ? `Integration log · ${invoice.number}` : ''} open={Boolean(invoice)} onClose={onClose} size="lg">
+    <Drawer title="Integration log" subtitle={invoice?.number} open={Boolean(invoice)} onClose={onClose} size="lg">
       <p className="muted" style={{ marginTop: 0 }}>Every push attempt, webhook and reconciliation for this invoice – the answer to “why does it say unpaid?”.</p>
       <div className="card">
         <Table columns={columns} rows={data?.logs} loading={loading} empty="No integration activity yet" />
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 
@@ -58,7 +60,9 @@ export default function InvoicesPage() {
   };
 
   const invoices = data?.invoices || [];
-  const outstanding = invoices.filter((i) => ['pending', 'sent', 'viewed'].includes(i.status)).reduce((s, i) => s + i.amount, 0);
+  const open = invoices.filter((i) => OPEN.includes(i.status));
+  const outstanding = open.reduce((s, i) => s + i.amount, 0);
+  const failed = invoices.filter((i) => i.pushStatus === 'failed').length;
 
   const columns = [
     { key: 'number', header: 'Invoice', render: (i) => (<><div className="cell-title mono">{i.number}</div><div className="cell-sub">{i.customerId?.name}</div></>) },
@@ -70,7 +74,7 @@ export default function InvoicesPage() {
       render: (i) => (
         <>
           <StatusBadge status={i.pushStatus} />
-          <div className="cell-sub">{i.pushAttempts} attempt{i.pushAttempts === 1 ? '' : 's'}{i.pushError ? ` · ${i.pushError}` : ''}</div>
+          <div className="cell-sub">{countOf(i.pushAttempts, 'attempt')}{i.pushError ? ` · ${i.pushError}` : ''}</div>
         </>
       ),
     },
@@ -85,7 +89,7 @@ export default function InvoicesPage() {
           {i.pushStatus === 'failed' && can('invoice.issue') && (
             <Button size="sm" variant="primary" onClick={() => act(`/invoices/${i._id}/retry-push`, 'Push re-queued')}>Retry push</Button>
           )}
-          {['pending', 'sent', 'viewed'].includes(i.status) && can('invoice.cancel') && (
+          {OPEN.includes(i.status) && can('invoice.cancel') && (
             <Button size="sm" variant="danger" onClick={() => act(`/invoices/${i._id}/cancel`, 'Invoice cancelled')}>Cancel</Button>
           )}
         </div>
@@ -95,23 +99,18 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h2>Invoices</h2>
-          <p>Status is kept in sync with BillPort automatically (webhooks + reconciliation).</p>
-        </div>
-        <span className="spacer" />
+      <PageHeader title="Invoices">
         <Button icon="refresh" onClick={reload} aria-label="Refresh" />
-      </div>
+      </PageHeader>
 
       <div className="stat-grid">
-        <div className="card stat"><div className="stat-label">Invoices</div><div className="stat-value">{invoices.length}</div></div>
-        <div className="card stat"><div className="stat-label">Paid</div><div className="stat-value">{invoices.filter((i) => i.status === 'paid').length}</div></div>
-        <div className="card stat"><div className="stat-label">Outstanding</div><div className="stat-value mono" style={{ fontSize: 20 }}>{formatMoney(outstanding)}</div></div>
-        <div className="card stat"><div className="stat-label">Push failed</div><div className="stat-value">{invoices.filter((i) => i.pushStatus === 'failed').length}</div></div>
+        <StatCard tone="primary" label="Invoices" value={invoices.length} sub="All issued" />
+        <StatCard tone="success" label="Paid" value={invoices.filter((i) => i.status === 'paid').length} sub="Settled by the customer" />
+        <StatCard tone="info" label="Outstanding" value={formatMoney(outstanding)} sub={countOf(open.length, 'invoice')} />
+        <StatCard tone="danger" label="Push failed" value={failed} sub={failed ? 'Retry from the row' : 'All delivered'} />
       </div>
 
-      <Card padded={false}>
+      <Card padded={false} className="card-fill">
         <Table columns={columns} rows={invoices} loading={loading && !data} empty="No invoices yet – convert a won deal" />
       </Card>
       <LogsModal invoice={logsFor} onClose={() => setLogsFor(null)} />

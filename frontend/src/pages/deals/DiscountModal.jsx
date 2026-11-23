@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { Button, Input, Modal, TextArea } from '../../components/common';
-import { formatMoney } from '../../utils/format';
+import { formatMoney, roleLabel } from '../../utils/format';
 
 export default function DiscountModal({ deal, onClose, onDone }) {
   const toast = useToast();
@@ -22,7 +22,7 @@ export default function DiscountModal({ deal, onClose, onDone }) {
     setBusy(true);
     try {
       const { request } = await api.post(`/deals/${deal._id}/discount-request`, { discountPercent: pct, remarks });
-      const chain = request.steps.map((s) => s.roleName.replace('_', ' ')).join(' → ');
+      const chain = request.steps.map((s) => roleLabel(s.roleName)).join(' → ');
       toast.success(request.steps.length ? `Sent for approval: ${chain}` : 'Within the auto-approval limit – deal won');
       onDone();
     } catch (err) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import useAsync from '../hooks/useAsync';
-import { Badge, Button, Card, Input } from '../components/common';
+import { Badge, Button, Card, Input, PageHeader } from '../components/common';
 
 // Admin editor for the approval bands. Steps are role names, comma separated, in order.
 const toForm = (config) =>
@@ -43,25 +43,15 @@ export default function ApprovalRulesPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h2>Discount approval rules</h2>
-          <p>Each band covers discounts above “from” up to and including “to”. No steps means auto-approved.</p>
-        </div>
-        <span className="spacer" />
+      <PageHeader title="Approval rules">
         {data && <Badge tone="primary">version {data.config.version}</Badge>}
-      </div>
+        <Button icon="plus" onClick={add}>Add band</Button>
+        <Button variant="primary" onClick={save} loading={busy}>Save rules</Button>
+      </PageHeader>
 
-      <Card
-        title="Bands"
-        actions={
-          <>
-            <Button icon="plus" size="sm" onClick={add}>Add band</Button>
-            <Button variant="primary" size="sm" onClick={save} loading={busy}>Save rules</Button>
-          </>
-        }
-      >
+      <Card title="Discount bands">
         <div className="stack">
+          <div className="faint">Each band covers discounts above “from” up to and including “to”. No steps means auto-approved.</div>
           {bands.map((b, i) => (
             <div key={i} className="band-row">
               <Input label="From %" type="number" value={b.minPercent} onChange={(e) => update(i, 'minPercent', e.target.value)} />

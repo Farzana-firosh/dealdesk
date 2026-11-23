@@ -4,7 +4,7 @@ import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket, useSocketEvent } from '../../context/SocketContext';
 import { useToast } from '../../context/ToastContext';
-import { Avatar, Badge, Button, EmptyState } from '../../components/common';
+import { Avatar, Button, EmptyState, StatusBadge } from '../../components/common';
 import { formatDay, formatTime } from '../../utils/format';
 
 const addUnique = (list, msg) => (list.some((m) => m._id === msg._id) ? list : [...list, msg]);
@@ -91,7 +91,7 @@ export default function Conversation({ dealId, thread, onRead }) {
           <h3>{thread?.deal?.title || 'Deal thread'}</h3>
           <span className="faint">{thread ? `${thread.participantCount} participants` : 'You are not in this thread yet'}</span>
         </div>
-        {thread?.deal?.status && <Badge tone="info">{thread.deal.status.replace('_', ' ')}</Badge>}
+        {thread?.deal?.status && <StatusBadge status={thread.deal.status} />}
       </div>
 
       <div className="messages" ref={listRef}>

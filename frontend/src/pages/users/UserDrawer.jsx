@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
-import { Button, Input, Modal, Select } from '../../components/common';
+import { Avatar, Button, Drawer, Input, Select } from '../../components/common';
 import { roleLabel } from '../../utils/format';
 
 const EMPTY = { name: '', email: '', password: '', roleId: '', branchId: '', managerId: '' };
@@ -35,7 +35,7 @@ function changesFrom(original, form) {
 }
 
 /** Create a user (user = null) or edit one. The API applies every rule again. */
-export default function UserModal({ open, user, self, options, onClose, onSaved }) {
+export default function UserDrawer({ open, user, self, options, onClose, onSaved }) {
   const toast = useToast();
   const isNew = !user;
   const [form, setForm] = useState(EMPTY);
@@ -89,8 +89,9 @@ export default function UserModal({ open, user, self, options, onClose, onSaved 
   };
 
   return (
-    <Modal
-      title={isNew ? 'Add user' : `Edit ${user.name}`}
+    <Drawer
+      title={isNew ? 'Add user' : user.name}
+      subtitle={isNew ? 'They sign in with this email and password.' : user.email}
       open={open}
       onClose={onClose}
       footer={
@@ -103,14 +104,24 @@ export default function UserModal({ open, user, self, options, onClose, onSaved 
       }
     >
       <form id="user-form" className="stack" onSubmit={submit} noValidate>
+        {!isNew && (
+          <div className="summary-box">
+            <Avatar name={user.name} size={40} />
+            <div>
+              <b style={{ fontSize: 15 }}>{user.name}</b>
+              <div className="capitalize">{roleLabel(user.role.name)} · {user.branch.name}</div>
+            </div>
+          </div>
+        )}
         {locked && <div className="form-note">This seeded demo account is read-only. Add a new user to try editing.</div>}
         {self && !locked && <div className="form-note">You can rename yourself here. Another administrator changes your access.</div>}
 
-        <div className="grid-2">
-          <Input label="Full name" value={form.name} onChange={set('name')} error={errors.name} disabled={locked} autoFocus />
-          <Input label="Email" type="email" icon="mail" value={form.email} onChange={set('email')} error={errors.email}
-            disabled={!isNew} hint={isNew ? 'Used to sign in' : 'Sign-in email cannot be changed'} autoComplete="off" />
-        </div>
+        <div className="section-title">Profile</div>
+        <Input label="Full name" value={form.name} onChange={set('name')} error={errors.name} disabled={locked} autoFocus />
+        <Input label="Email" type="email" icon="mail" value={form.email} onChange={set('email')} error={errors.email}
+          disabled={!isNew} hint={isNew ? 'Used to sign in' : 'Sign-in email cannot be changed'} autoComplete="off" />
+
+        <div className="section-title">Access</div>
         <div className="grid-2">
           <Select label="Role" placeholder="Choose a role" value={form.roleId} onChange={set('roleId')} options={roleOptions}
             error={errors.roleId} disabled={accessLocked} />
@@ -119,6 +130,8 @@ export default function UserModal({ open, user, self, options, onClose, onSaved 
         </div>
         <Select label="Manager" placeholder="No manager" value={form.managerId} onChange={set('managerId')} options={managerOptions}
           hint="Joins this user's deal chats" disabled={accessLocked || !form.branchId} />
+
+        <div className="section-title">{isNew ? 'Password' : 'Reset password'}</div>
         <Input
           label={isNew ? 'Password' : 'New password'}
           type="password"
@@ -131,6 +144,6 @@ export default function UserModal({ open, user, self, options, onClose, onSaved 
           disabled={accessLocked}
         />
       </form>
-    </Modal>
+    </Drawer>
   );
 }

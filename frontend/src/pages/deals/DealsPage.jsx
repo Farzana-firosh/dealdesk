@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useSocketEvent } from '../../context/SocketContext';
 import useAsync from '../../hooks/useAsync';
-import { Button, Card, Select, StatusBadge, Table } from '../../components/common';
+import { Button, Card, PageHeader, Select, StatusBadge, Table } from '../../components/common';
 import { formatDate, formatMoney, LOST_REASONS } from '../../utils/format';
-import NewDealModal from './NewDealModal';
+import NewDealDrawer from './NewDealDrawer';
 import DiscountModal from './DiscountModal';
-import ApprovalHistoryModal from './ApprovalHistoryModal';
+import ApprovalHistoryDrawer from './ApprovalHistoryDrawer';
 import LostDealModal from './LostDealModal';
 
 const STATUS_OPTIONS = [
@@ -19,14 +19,21 @@ const STATUS_OPTIONS = [
   { value: 'lost', label: 'Lost' },
 ];
 
-const SCOPE_TEXT = { own: 'Showing deals you own', branch: 'Showing every deal in your branch', all: 'Showing deals across all branches' };
-
 export default function DealsPage() {
   const { can } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [status, setStatus] = useState('');
   const [modal, setModal] = useState(null); // { type, deal }
+
+  // "New deal" from the dashboard lands here with state; open the form once and clear it
+  useEffect(() => {
+    if (location.state?.newDeal && can('deal.edit')) {
+      setModal({ type: 'new' });
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate, can]);
 
   const { data, loading, reload } = useAsync(() => api.get(`/deals${status ? `?status=${status}` : ''}`), [status]);
   useSocketEvent('notification', reload); // approval decisions change deal status
@@ -52,7 +59,7 @@ export default function DealsPage() {
         </>
       ),
     },
-    { key: 'owner', header: 'Owner', render: (d) => (<><div>{d.ownerId?.name}</div><div className="cell-sub">{d.branchId?.name}</div></>) },
+    { key: 'owner', header: 'Owner', render: (d) => (<><div className="nowrap">{d.ownerId?.name}</div><div className="cell-sub">{d.branchId?.name}</div></>) },
     {
       key: 'total',
       header: 'Value',
@@ -74,7 +81,7 @@ export default function DealsPage() {
         </>
       ),
     },
-    { key: 'updated', header: 'Updated', render: (d) => <span className="muted">{formatDate(d.updatedAt)}</span> },
+    { key: 'updated', header: 'Updated', render: (d) => <span className="muted nowrap">{formatDate(d.updatedAt)}</span> },
     {
       key: 'actions',
       header: '',
@@ -105,26 +112,21 @@ export default function DealsPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h2>Deals</h2>
-          <p>{data ? SCOPE_TEXT[data.scope] : ' '}</p>
-        </div>
-        <span className="spacer" />
-        <div style={{ width: 180 }}>
+      <PageHeader title="Deals">
+        <div className="filter">
           <Select value={status} onChange={(e) => setStatus(e.target.value)} placeholder="All statuses" options={STATUS_OPTIONS} />
         </div>
         <Button icon="refresh" onClick={reload} aria-label="Refresh" />
         {can('deal.edit') && <Button variant="primary" icon="plus" onClick={() => setModal({ type: 'new' })}>New deal</Button>}
-      </div>
+      </PageHeader>
 
-      <Card padded={false}>
+      <Card padded={false} className="card-fill">
         <Table columns={columns} rows={data?.deals} loading={loading && !data} empty="No deals in your scope" />
       </Card>
 
-      <NewDealModal open={modal?.type === 'new'} onClose={close} onCreated={done} />
+      <NewDealDrawer open={modal?.type === 'new'} onClose={close} onCreated={done} />
       <DiscountModal deal={modal?.type === 'discount' ? modal.deal : null} onClose={close} onDone={done} />
-      <ApprovalHistoryModal deal={modal?.type === 'history' ? modal.deal : null} onClose={close} />
+      <ApprovalHistoryDrawer deal={modal?.type === 'history' ? modal.deal : null} onClose={close} />
       <LostDealModal deal={modal?.type === 'lost' ? modal.deal : null} onClose={close} onDone={done} />
     </>
   );

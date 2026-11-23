@@ -3,8 +3,8 @@ import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import useAsync from '../../hooks/useAsync';
-import { Avatar, Badge, Button, Card, Table } from '../../components/common';
-import UserModal from './UserModal';
+import { Avatar, Badge, Button, Card, PageHeader, Table } from '../../components/common';
+import UserDrawer from './UserDrawer';
 import { roleLabel } from '../../utils/format';
 
 const NO_OPTIONS = { roles: [], branches: [], managers: [] };
@@ -81,20 +81,15 @@ export default function UsersPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h2>Users</h2>
-          <p>Who can sign in, with which role and branch. Deactivating someone signs them out straight away.</p>
-        </div>
-        <span className="spacer" />
+      <PageHeader title="Users">
         <Button variant="primary" icon="plus" onClick={() => setEditing('new')} disabled={!data}>Add user</Button>
-      </div>
+      </PageHeader>
 
-      <Card padded={false}>
+      <Card padded={false} className="card-fill">
         <Table columns={columns} rows={users} loading={loading && !data} empty="No users in your scope" />
       </Card>
 
-      <UserModal
+      <UserDrawer
         open={editing !== null}
         user={editing === 'new' ? null : editing}
         self={editing?._id === me.id}

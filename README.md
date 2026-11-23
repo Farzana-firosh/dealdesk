@@ -6,7 +6,7 @@ DealDesk is a backend for deals, discount approvals, realtime deal chat and invo
 |---|---|---|
 | `dealdesk/` | 4000 | Main API (Express 5, MongoDB/Mongoose, JWT, Socket.IO, background jobs) |
 | `billport/` | 5000 | Fake billing service: random 503s, slow responses, duplicate / out-of-order / badly-signed webhooks |
-| `frontend/` | 5173 | Small React (Vite) UI to demonstrate the flows – login, deals, approvals, invoices, deal chat. Not part of the marked backend |
+| `frontend/` | 5173 | React (Vite) UI for every flow – dashboard, deals, approvals, invoices, deal chat, users and roles |
 
 Stack: Node.js 20+, Express 5, MongoDB 7 with Mongoose, JWT and bcrypt (`bcryptjs`), Socket.IO, Joi. The code is plain JavaScript (CommonJS) so the solution stays small and readable within the time box.
 
@@ -105,10 +105,16 @@ dealdesk/src
 frontend/src
 ├── api/               fetch wrapper (JWT header, per-tab token)
 ├── context/           Auth, Socket (one connection, useSocketEvent hook), Toast
-├── components/common/ reusable Button, Input, Select, TextArea, Card, Badge, Table, Modal, Avatar, Icon …
-├── components/layout/ sidebar, top bar, notification bell
-└── pages/             deals/, chat/, approvals, invoices, approval rules, login
+├── components/common/ reusable Button, Input, Select, TextArea, Card, StatCard, Badge, Table, Modal/Drawer, Avatar, Icon …
+├── components/layout/ nav config (one list for sidebar, titles and landing page), collapsible sidebar, top bar, notification bell
+└── pages/             dashboard/, deals/, chat/, users/, roles/, approvals, invoices, approval rules, login
 ```
+**UI.** One stylesheet (`styles/global.css`) with design tokens for a five-colour palette (ink, slate, steel, mist, cloud) and Helvetica Neue (Inter where it is not installed).
+- A fixed header carries the brand, live status, notifications and the profile menu (sign out). Below it, a floating sidebar collapses to an icon rail (remembered per browser) and becomes a drawer on phones that closes itself on navigation.
+- Every list page is a header card (title, filters, actions) followed by its content card; tables scroll inside the card with a sticky header. Long forms (users, roles, new deal, histories, integration logs) open in a side drawer; short confirmations stay as centred dialogs.
+- The dashboard is a bento grid: greeting and illustrated shortcuts, then attention, the won/lost chart, progress rings, recent deals, lost reasons and the open pipeline.
+- The sign-in card shows a night-sea scene with a container ship; after a successful sign-in the ship sails off before the app opens (skipped when the system asks for reduced motion). The moving parts are separate layers animated with CSS transforms, so the browser composites them instead of repainting.
+- Everyone lands on the first page their role allows, normally the dashboard.
 Controllers stay thin and the business rules live in the services. The UI only *hides* actions a user lacks permission for; the API enforces every rule again.
 
 ---
@@ -304,7 +310,7 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
   - count and value per status (the open pipeline)
   - won and lost per month for the last six months (every month present, so the chart has no gaps)
   - the win rate (won ÷ closed in that period) and the lost reasons
-- The **Analytics** screen shows these as stat tiles, a won/lost bar chart with hover details and a table view, and the lost reasons.
+- The **Dashboard** (the landing page) shows these as stat tiles, a won/lost bar chart with hover details and a table view, and the lost reasons, next to what needs the user's attention: approvals waiting on them, failed invoice pushes and outstanding invoices (each only if their role can see it), and recent deals.
 
 ---
 
