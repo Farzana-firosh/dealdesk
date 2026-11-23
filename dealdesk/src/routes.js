@@ -17,5 +17,6 @@ router.use('/approvals', approvalRouter);
 router.use('/approval-config', approvalConfigRouter);
 router.use('/invoices', require('./modules/invoices/invoice.routes').invoiceRouter);
 router.use('/threads', require('./modules/chat/chat.routes'));
+router.use('/notifications', require('./modules/notifications/notification.routes'));
 
 module.exports = router;

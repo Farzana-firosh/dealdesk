@@ -3,7 +3,15 @@ const { bus, EVENTS } = require('../common/events');
 const { toUser, toDeal, notify, disconnectUser } = require('./emitter');
 const User = require('../modules/users/user.model');
 const Role = require('../modules/roles/role.model');
+const Deal = require('../modules/deals/deal.model');
+const notificationService = require('../modules/notifications/notification.service');
 const logger = require('../common/logger');
+
+// Stored first, then pushed live, so a user who is offline sees it next time they connect.
+async function send(userIds, type, data) {
+  const stored = await notificationService.createMany(userIds.map(String), type, data);
+  stored.forEach((n, i) => notify(userIds[i], n));
+}
 
 // Users who should act on the request's current step: holders of that role whose
 // discount.approve scope covers the deal's branch. Resolved in the query, not by filtering.
@@ -24,22 +32,23 @@ async function approversFor(request) {
 
 async function onDiscountRequested({ request, dealTitle }) {
   const approvers = await approversFor(request);
+  if (!approvers.length) return;
+  // a later step is published by the approval, which does not have the deal at hand
+  const title = dealTitle ?? (await Deal.findById(request.dealId, 'title').lean())?.title;
   const current = request.steps[request.currentStep - 1];
-  approvers.forEach((u) =>
-    notify(u._id, 'discount.requested', {
-      requestId: request._id,
-      dealId: request.dealId,
-      dealTitle,
-      discountPercent: request.discountPercent,
-      step: current.step,
-      totalSteps: request.steps.length,
-      role: current.roleName,
-    }),
-  );
+  await send(approvers.map((u) => u._id), 'discount.requested', {
+    requestId: request._id,
+    dealId: request.dealId,
+    dealTitle: title,
+    discountPercent: request.discountPercent,
+    step: current.step,
+    totalSteps: request.steps.length,
+    role: current.roleName,
+  });
 }
 
 function onDiscountDecided({ request, step, action, remarks }) {
-  notify(request.requestedBy, 'discount.decided', {
+  return send([request.requestedBy], 'discount.decided', {
     requestId: request._id,
     dealId: request.dealId,
     step,
@@ -50,7 +59,7 @@ function onDiscountDecided({ request, step, action, remarks }) {
 }
 
 function onInvoiceStatusChanged(data) {
-  notify(data.ownerId, 'invoice.status_changed', data);
+  return send([data.ownerId], 'invoice.status_changed', data);
 }
 
 function onChatMessage({ dealId, message, participantIds }) {

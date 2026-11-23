@@ -96,6 +96,7 @@ dealdesk/src
 │   ├── approvals/     config, requests, append-only history
 │   ├── invoices/      sale, invoice, BillPort client, push worker, webhooks, reconciliation, integration_logs
 │   ├── chat/          threads, messages, unread counts
+│   ├── notifications/ stored per-user notifications, read state
 │   └── users/ branches/ customers/ products/
 ├── realtime/          Socket.IO server, room emitter, event → notification mapping
 └── database/          model registry, seed, migrations
@@ -249,13 +250,12 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 - **Two small exceptions to "nothing inline":** the webhook endpoint does one inline insert, for deduplication and durability, before answering 200. Notifications are dispatched in-process with an EventEmitter. They're best-effort, and the durable state (invoice status, approvals, unread counts) is always in MongoDB.
 
 **Not finished:**
-- **Notifications aren't persisted.** A user who's offline misses the live notification, although `GET /approvals/pending`, invoice status and unread counts still show the current state.
 - **Cancelling is local only.** BillPort's contract has no cancel endpoint, so a cancelled invoice ignores later BillPort events.
 - **Plain JavaScript, not TypeScript.**
 
 **With another day:**
 1. ~~An automated test suite run in CI.~~ Done: see *Automated tests* above.
-2. A persisted `notifications` collection, with a read API and replay on reconnect.
+2. ~~A persisted `notifications` collection, with a read API and replay on reconnect.~~ Done: see *Realtime chat and notifications*.
 3. A MongoDB replica set and transactions for convert and for discount requests. A transactional outbox for domain events.
 4. An integration-log retention policy (TTL index) and a small admin view of failed pushes, with bulk retry.
 5. ~~Rate limiting on login and webhooks, plus Helmet and structured logging (pino) with a request id.~~ Done: see *Security and logging*.
@@ -283,7 +283,11 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
     - the requester
     - the deal owner
   - Chat uses the `chat:message` and `thread:updated` events.
-  - System notifications use a single `notification` event with the envelope `{ type, data, at }`.
+  - System notifications use a single `notification` event with the envelope `{ id, type, data, at, read }`.
+- **Stored notifications** (`modules/notifications`): each one is saved per recipient *before* it is pushed, so a user who was offline still gets it.
+  - The bell loads `GET /api/notifications` (latest 30 and the unread count, only the caller's own) on every socket connect, which also replays anything missed while disconnected.
+  - Opening the bell calls `POST /api/notifications/read`. Read state is separate from chat unread counts.
+  - A TTL index removes notifications after 90 days. Delivery is still in-process, so a crash between the business write and the notification can lose that one notification (a transactional outbox would close this).
 - **Bonus:** a typing indicator, relayed only inside a room the socket has joined.
 
 ---
@@ -302,6 +306,7 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | Approval config (admin) | `GET/PUT /api/approval-config` |
 | Invoices | `GET /api/invoices`, `GET /api/invoices/:id`, `GET /api/invoices/:id/logs`, `POST /api/invoices/:id/retry-push`, `POST /api/invoices/:id/cancel` |
 | Chat | `GET /api/threads`, `GET/POST /api/threads/:dealId/messages`, `POST /api/threads/:dealId/read` |
+| Notifications | `GET /api/notifications`, `POST /api/notifications/read` |
 | Webhook | `POST /webhooks/billport` (HMAC-signed, no JWT) |
 | BillPort | `POST /billing/invoices`, `GET /billing/invoices/:externalId`, `GET/POST /admin/chaos`, `GET /admin/invoices`, `GET /admin/deliveries` |
 | Socket events | client → `thread:join`, `thread:leave`, `chat:send`, `chat:typing` · server → `chat:message`, `chat:typing`, `thread:updated`, `notification` |

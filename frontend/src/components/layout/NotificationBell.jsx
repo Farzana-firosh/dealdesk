@@ -10,7 +10,7 @@ const ICON = {
 };
 
 export default function NotificationBell() {
-  const { notifications, unseen, markSeen } = useSocket();
+  const { notifications, unseen, markSeen, clearHighlight } = useSocket();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -20,10 +20,13 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', close);
   }, []);
 
-  const toggle = () => {
-    setOpen((v) => !v);
-    markSeen();
-  };
+  // unread items stay highlighted while the panel is open, then settle
+  useEffect(() => {
+    if (open) markSeen();
+    else clearHighlight();
+  }, [open]); // runs on open/close only
+
+  const toggle = () => setOpen((v) => !v);
 
   return (
     <div className="dropdown" ref={ref}>
@@ -33,12 +36,12 @@ export default function NotificationBell() {
         <div className="dropdown-panel">
           <div className="card-header"><span className="card-title">Notifications</span></div>
           {notifications.length === 0 ? (
-            <EmptyState icon="bell" title="No notifications yet">Live updates appear here.</EmptyState>
+            <EmptyState icon="bell" title="No notifications yet">Approval and invoice updates appear here.</EmptyState>
           ) : (
             notifications.map((n) => {
               const icon = ICON[n.type] || ICON['invoice.status_changed'];
               return (
-                <div key={n.id} className="notif">
+                <div key={n.id} className={n.read ? 'notif' : 'notif is-unread'}>
                   <span className="notif-icon" style={{ background: icon.bg, color: icon.color }}>
                     <Icon name={icon.name} size={15} />
                   </span>

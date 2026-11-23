@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { API_BASE } from '../api/client';
+import { API_BASE, api } from '../api/client';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
 
@@ -34,11 +34,25 @@ export function SocketProvider({ children }) {
     // Same origin as the REST calls; without VITE_API_URL it connects to the page origin (dev proxy).
     const options = { auth: { token } };
     const s = API_BASE ? io(API_BASE, options) : io(options);
-    s.on('connect', () => setConnected(true));
+
+    // Notifications are stored, so every (re)connect reloads them: nothing is missed while offline.
+    const load = () =>
+      api
+        .get('/notifications')
+        .then((res) => {
+          setNotifications(res.notifications.map((n) => ({ ...n, text: describe(n) })));
+          setUnseen(res.unread);
+        })
+        .catch(() => {}); // the bell just stays as it was; live ones still arrive
+
+    s.on('connect', () => {
+      setConnected(true);
+      load();
+    });
     s.on('disconnect', () => setConnected(false));
     s.on('notification', (n) => {
-      const item = { ...n, text: describe(n), id: `${n.at}-${Math.random()}` };
-      setNotifications((list) => [item, ...list].slice(0, 30));
+      const item = { ...n, text: describe(n) };
+      setNotifications((list) => [item, ...list.filter((x) => x.id !== n.id)].slice(0, 30));
       setUnseen((c) => c + 1);
       toast.show(item.text);
     });
@@ -47,10 +61,21 @@ export function SocketProvider({ children }) {
       s.disconnect();
       setSocket(null);
       setConnected(false);
+      setNotifications([]);
+      setUnseen(0);
     };
   }, [token, toast]);
 
-  const value = { socket, connected, notifications, unseen, markSeen: () => setUnseen(0) };
+  // Opening the bell marks everything read. The list keeps its unread highlight until it closes.
+  const markSeen = () => {
+    if (unseen === 0) return;
+    setUnseen(0);
+    api.post('/notifications/read').catch(() => {});
+  };
+
+  const clearHighlight = () => setNotifications((list) => list.map((n) => (n.read ? n : { ...n, read: true })));
+
+  const value = { socket, connected, notifications, unseen, markSeen, clearHighlight };
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 }
 

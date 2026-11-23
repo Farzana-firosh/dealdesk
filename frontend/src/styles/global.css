@@ -265,6 +265,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 }
 .notif { display: flex; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .notif:last-child { border-bottom: 0; }
+.notif.is-unread { background: var(--primary-soft); }
 .notif-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .bell-count { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
 
