@@ -3,6 +3,7 @@ const Joi = require('joi');
 const { authorize } = require('../auth/auth.middleware');
 const { validate } = require('../../common/middleware/validate');
 const controller = require('./deal.controller');
+const { LOST_REASONS } = require('./deal.model');
 const approvalController = require('../approvals/approval.controller');
 const invoiceController = require('../invoices/invoice.controller');
 
@@ -23,11 +24,17 @@ const updateSchema = Joi.object({
   items,
 }).min(1);
 
+const lostSchema = Joi.object({
+  reason: Joi.string().valid(...LOST_REASONS).required(),
+  notes: Joi.string().trim().max(500).allow(''),
+});
+
 const router = Router();
 router.get('/', authorize('deal.view'), controller.list);
 router.get('/:id', authorize('deal.view'), controller.getOne);
 router.post('/', authorize('deal.edit'), validate(createSchema), controller.create);
 router.patch('/:id', authorize('deal.edit'), validate(updateSchema), controller.update);
+router.post('/:id/lost', authorize('deal.edit'), validate(lostSchema), controller.markLost);
 
 const discountSchema = Joi.object({
   discountPercent: Joi.number().min(0).max(100).required(),

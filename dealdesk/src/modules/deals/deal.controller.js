@@ -17,4 +17,8 @@ async function update(req, res) {
   res.json({ deal: await dealService.updateDeal(req.user, req.scope, req.params.id, req.body) });
 }
 
-module.exports = { list, getOne, create, update };
+async function markLost(req, res) {
+  res.json({ deal: await dealService.markLost(req.user, req.scope, req.params.id, req.body) });
+}
+
+module.exports = { list, getOne, create, update, markLost };

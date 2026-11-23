@@ -8,6 +8,7 @@ import { Avatar, Button, Icon } from '../common';
 // Navigation is filtered by permission, mirroring what the API allows.
 const NAV = [
   { to: '/deals', label: 'Deals', icon: 'deals', permission: 'deal.view' },
+  { to: '/analytics', label: 'Analytics', icon: 'chart', permission: 'deal.view' },
   { to: '/chat', label: 'Deal chat', icon: 'chat', permission: 'chat.send', badge: 'unread' },
   { to: '/approvals', label: 'Approvals', icon: 'approvals', permission: 'discount.approve', badge: 'pending' },
   { to: '/invoices', label: 'Invoices', icon: 'invoices', permission: 'invoice.view' },

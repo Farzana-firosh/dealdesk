@@ -4,6 +4,16 @@ export const formatMoney = (n) => (n == null ? '–' : money.format(n));
 
 export const formatDate = (d) => (d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '–');
 
+// Same keys as LOST_REASONS in the API's deal model.
+export const LOST_REASONS = {
+  price: 'Price too high',
+  competitor: 'Went with a competitor',
+  no_budget: 'No budget',
+  timing: 'Bad timing',
+  no_response: 'Customer stopped responding',
+  other: 'Other',
+};
+
 // "sales_manager" -> "sales manager"
 export const roleLabel = (name) => name.replace(/_/g, ' ');
 

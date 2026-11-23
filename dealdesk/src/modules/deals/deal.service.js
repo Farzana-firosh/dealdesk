@@ -63,4 +63,18 @@ async function updateDeal(user, scope, dealId, changes) {
   return deal.save();
 }
 
-module.exports = { listDeals, getDeal, createDeal, updateDeal };
+// Only an open deal can be lost: a pending one waits for its approvers, and a won one may be invoiced.
+// Lost is final and starts nothing (no approval, no invoice).
+async function markLost(user, scope, dealId, { reason, notes }) {
+  const deal = await getDeal(user, scope, dealId, { populate: false });
+  // conditional on `open`, so a discount request racing this one cannot also win
+  const lost = await Deal.findOneAndUpdate(
+    { _id: deal._id, status: 'open' },
+    { status: 'lost', lostReason: reason, lostNotes: notes || undefined, closedAt: new Date() },
+    { returnDocument: 'after', runValidators: true },
+  );
+  if (!lost) throw AppError.conflict(`Deal is ${deal.status}; only open deals can be marked lost`);
+  return lost;
+}
+
+module.exports = { listDeals, getDeal, createDeal, updateDeal, markLost };

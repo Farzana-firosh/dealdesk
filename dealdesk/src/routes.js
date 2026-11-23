@@ -13,6 +13,7 @@ router.use('/users', require('./modules/users/user.routes'));
 router.use('/customers', require('./modules/customers/customer.routes'));
 router.use('/products', require('./modules/products/product.routes'));
 router.use('/deals', require('./modules/deals/deal.routes'));
+router.use('/analytics', require('./modules/analytics/analytics.routes'));
 router.use('/approvals', approvalRouter);
 router.use('/approval-config', approvalConfigRouter);
 router.use('/invoices', require('./modules/invoices/invoice.routes').invoiceRouter);

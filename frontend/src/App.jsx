@@ -10,6 +10,7 @@ import InvoicesPage from './pages/InvoicesPage';
 import ApprovalRulesPage from './pages/ApprovalRulesPage';
 import UsersPage from './pages/users/UsersPage';
 import RolesPage from './pages/roles/RolesPage';
+import AnalyticsPage from './pages/analytics/AnalyticsPage';
 
 // Hides a route the user has no permission for. The API enforces the same rule.
 function Guard({ permission, children }) {
@@ -35,6 +36,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedApp />}>
         <Route path="/deals" element={<Guard permission="deal.view"><DealsPage /></Guard>} />
+        <Route path="/analytics" element={<Guard permission="deal.view"><AnalyticsPage /></Guard>} />
         <Route path="/chat/:dealId?" element={<Guard permission="chat.send"><ChatPage /></Guard>} />
         <Route path="/approvals" element={<Guard permission="discount.approve"><ApprovalsPage /></Guard>} />
         <Route path="/invoices" element={<Guard permission="invoice.view"><InvoicesPage /></Guard>} />

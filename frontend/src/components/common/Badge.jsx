@@ -3,6 +3,7 @@ const STATUS_TONE = {
   open: 'info',
   pending_approval: 'warning',
   won: 'success',
+  lost: 'danger',
   pending: 'warning',
   approved: 'success',
   auto_approved: 'success',

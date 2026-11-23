@@ -3,6 +3,7 @@
 // running it again changes nothing. Runs on server start-up, or by hand with `npm run migrate`.
 const mongoose = require('mongoose');
 const Role = require('../modules/roles/role.model');
+const Deal = require('../modules/deals/deal.model');
 const logger = require('../common/logger');
 
 const Migration = mongoose.model(
@@ -18,6 +19,16 @@ const MIGRATIONS = [
       Role.updateOne(
         { name: 'admin', 'permissions.key': { $ne: 'user.manage' } },
         { $push: { permissions: { key: 'user.manage', scope: 'all' } } },
+      ),
+  },
+  {
+    id: '2026-11-23-deal-closed-at',
+    // deals won before closedAt existed: their close date is the day they were won
+    up: () =>
+      Deal.updateMany(
+        { status: 'won', closedAt: { $exists: false }, wonAt: { $exists: true } },
+        [{ $set: { closedAt: '$wonAt' } }],
+        { updatePipeline: true },
       ),
   },
 ];

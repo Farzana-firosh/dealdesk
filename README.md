@@ -97,6 +97,7 @@ dealdesk/src
 │   ├── invoices/      sale, invoice, BillPort client, push worker, webhooks, reconciliation, integration_logs
 │   ├── chat/          threads, messages, unread counts
 │   ├── notifications/ stored per-user notifications, read state
+│   ├── analytics/     deal pipeline, win rate and lost reasons (one scoped aggregation)
 │   └── users/ branches/ customers/ products/
 ├── realtime/          Socket.IO server, room emitter, event → notification mapping
 └── database/          model registry, seed, migrations
@@ -292,6 +293,21 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 
 ---
 
+## Lost deals and analytics
+
+- **Lost is a final status.** `POST /api/deals/:id/lost` needs `deal.edit` in scope and a reason from a fixed list (`price`, `competitor`, `no_budget`, `timing`, `no_response`, `other`), with optional notes. It records `closedAt`.
+  - Only an **open** deal can be lost. A deal waiting for approval is decided first, so an approval chain never finishes on a lost deal.
+  - The change is conditional on `status: 'open'`, the same guard a discount request uses, so the two cannot both succeed.
+  - Nothing starts from a lost deal: it cannot be edited, discounted or converted, and no notification is sent.
+- **`closedAt`** is set when a deal is won or lost. A start-up migration backfilled it from `wonAt` for deals won earlier.
+- **`GET /api/analytics/deals`** uses the same `deal.view` permission and scope as the deals list, so the numbers cover exactly the deals you can see. One `$facet` aggregation returns:
+  - count and value per status (the open pipeline)
+  - won and lost per month for the last six months (every month present, so the chart has no gaps)
+  - the win rate (won ÷ closed in that period) and the lost reasons
+- The **Analytics** screen shows these as stat tiles, a won/lost bar chart with hover details and a table view, and the lost reasons.
+
+---
+
 ## API overview
 All `/api` routes except login require `Authorization: Bearer <token>`.
 
@@ -301,7 +317,8 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | Roles (admin) | `GET /api/roles/permissions`, `GET/POST /api/roles`, `PATCH/DELETE /api/roles/:id` |
 | Users (admin) | `GET /api/users`, `GET /api/users/options`, `POST /api/users`, `PATCH /api/users/:id` |
 | Reference | `GET /api/customers`, `GET /api/products` |
-| Deals | `GET/POST /api/deals`, `GET/PATCH /api/deals/:id`, `POST /api/deals/:id/discount-request`, `GET /api/deals/:id/approvals`, `POST /api/deals/:id/convert` |
+| Deals | `GET/POST /api/deals`, `GET/PATCH /api/deals/:id`, `POST /api/deals/:id/discount-request`, `GET /api/deals/:id/approvals`, `POST /api/deals/:id/convert`, `POST /api/deals/:id/lost` |
+| Analytics | `GET /api/analytics/deals` |
 | Approvals | `GET /api/approvals/pending`, `POST /api/approvals/:id/approve`, `POST /api/approvals/:id/reject` |
 | Approval config (admin) | `GET/PUT /api/approval-config` |
 | Invoices | `GET /api/invoices`, `GET /api/invoices/:id`, `GET /api/invoices/:id/logs`, `POST /api/invoices/:id/retry-push`, `POST /api/invoices/:id/cancel` |

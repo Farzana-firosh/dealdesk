@@ -6,10 +6,18 @@ import { useToast } from '../../context/ToastContext';
 import { useSocketEvent } from '../../context/SocketContext';
 import useAsync from '../../hooks/useAsync';
 import { Button, Card, Select, StatusBadge, Table } from '../../components/common';
-import { formatDate, formatMoney } from '../../utils/format';
+import { formatDate, formatMoney, LOST_REASONS } from '../../utils/format';
 import NewDealModal from './NewDealModal';
 import DiscountModal from './DiscountModal';
 import ApprovalHistoryModal from './ApprovalHistoryModal';
+import LostDealModal from './LostDealModal';
+
+const STATUS_OPTIONS = [
+  { value: 'open', label: 'Open' },
+  { value: 'pending_approval', label: 'Pending approval' },
+  { value: 'won', label: 'Won' },
+  { value: 'lost', label: 'Lost' },
+];
 
 const SCOPE_TEXT = { own: 'Showing deals you own', branch: 'Showing every deal in your branch', all: 'Showing deals across all branches' };
 
@@ -56,7 +64,16 @@ export default function DealsPage() {
         </>
       ),
     },
-    { key: 'status', header: 'Status', render: (d) => <StatusBadge status={d.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (d) => (
+        <>
+          <StatusBadge status={d.status} />
+          {d.status === 'lost' && <div className="cell-sub" title={d.lostNotes || undefined}>{LOST_REASONS[d.lostReason]}</div>}
+        </>
+      ),
+    },
     { key: 'updated', header: 'Updated', render: (d) => <span className="muted">{formatDate(d.updatedAt)}</span> },
     {
       key: 'actions',
@@ -67,7 +84,10 @@ export default function DealsPage() {
           {can('chat.send') && <Button size="sm" icon="chat" onClick={() => navigate(`/chat/${d._id}`)}>Chat</Button>}
           <Button size="sm" onClick={() => setModal({ type: 'history', deal: d })}>History</Button>
           {d.status === 'open' && can('deal.edit') && (
-            <Button size="sm" variant="primary" onClick={() => setModal({ type: 'discount', deal: d })}>Request discount</Button>
+            <>
+              <Button size="sm" variant="primary" onClick={() => setModal({ type: 'discount', deal: d })}>Request discount</Button>
+              <Button size="sm" variant="ghost" onClick={() => setModal({ type: 'lost', deal: d })}>Mark lost</Button>
+            </>
           )}
           {d.status === 'won' && can('invoice.issue') && (
             <Button size="sm" variant="success" onClick={() => convert(d)}>Convert</Button>
@@ -92,8 +112,7 @@ export default function DealsPage() {
         </div>
         <span className="spacer" />
         <div style={{ width: 180 }}>
-          <Select value={status} onChange={(e) => setStatus(e.target.value)} placeholder="All statuses"
-            options={[{ value: 'open', label: 'Open' }, { value: 'pending_approval', label: 'Pending approval' }, { value: 'won', label: 'Won' }]} />
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} placeholder="All statuses" options={STATUS_OPTIONS} />
         </div>
         <Button icon="refresh" onClick={reload} aria-label="Refresh" />
         {can('deal.edit') && <Button variant="primary" icon="plus" onClick={() => setModal({ type: 'new' })}>New deal</Button>}
@@ -106,6 +125,7 @@ export default function DealsPage() {
       <NewDealModal open={modal?.type === 'new'} onClose={close} onCreated={done} />
       <DiscountModal deal={modal?.type === 'discount' ? modal.deal : null} onClose={close} onDone={done} />
       <ApprovalHistoryModal deal={modal?.type === 'history' ? modal.deal : null} onClose={close} />
+      <LostDealModal deal={modal?.type === 'lost' ? modal.deal : null} onClose={close} onDone={done} />
     </>
   );
 }
