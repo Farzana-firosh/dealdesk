@@ -57,6 +57,7 @@ async function loginAll() {
       post: (url, body = {}) => auth(agent.post(url).send(body)),
       patch: (url, body) => auth(agent.patch(url).send(body)),
       put: (url, body) => auth(agent.put(url).send(body)),
+      delete: (url) => auth(agent.delete(url)),
     };
   };
   return { tokens, as };

@@ -13,7 +13,7 @@ const Migration = mongoose.model(
 const MIGRATIONS = [
   {
     id: '2026-11-16-admin-user-manage',
-    // Recorded once, so an admin who later removes the permission on purpose keeps that choice.
+    // admin always holds every permission, so each new permission key needs a step like this one
     up: () =>
       Role.updateOne(
         { name: 'admin', 'permissions.key': { $ne: 'user.manage' } },

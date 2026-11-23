@@ -126,6 +126,12 @@ Controllers stay thin and the business rules live in the services. The UI only *
 - **No self-service access changes:** nobody changes their own role, branch, manager, status or password there, so nobody can promote or lock out themselves. Together these mean the last person who can manage everyone cannot be removed.
 - **Deactivate, never delete:** deals and history keep their owner. A deactivated user's next request gets 401 and their live sockets are closed.
 
+**Managing roles** (`role.manage`, the Roles screen, `modules/roles/role.service.js`) uses the same no-escalation check:
+- You can only create or edit a role with permissions you hold at the same or a wider scope, and only edit a role whose current access you hold.
+- `admin` always has every permission and cannot be edited, and nobody edits their own role. With the users rules, someone can always manage users and roles.
+- Only unused custom roles can be deleted: not built-in ones, not one any user has, and not one the approval rules or an open request use.
+- Role names are lowercase letters, numbers and `_` (they are typed into the approval rules), fixed once created.
+
 **Migrations.** The hosted database is never reseeded, so data changes for existing databases are steps in `src/database/migrate.js`. They run at start-up (or `npm run migrate`), each one once, recorded in the `migrations` collection, and each written so that running it again changes nothing. The first one gives the existing `admin` role `user.manage`.
 
 **One guard.** Every protected route uses `authorize('<permission>')` (`modules/auth/auth.middleware.js`). It returns 403 if the user's role lacks the permission. Otherwise it sets `req.scope` to `own`, `branch` or `all`.
@@ -288,7 +294,7 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /api/auth/login`, `GET /api/auth/me`, `GET/POST /api/auth/demo` (demo mode only) |
-| Roles (admin) | `GET /api/roles/permissions`, `GET/POST /api/roles`, `PATCH /api/roles/:id` |
+| Roles (admin) | `GET /api/roles/permissions`, `GET/POST /api/roles`, `PATCH/DELETE /api/roles/:id` |
 | Users (admin) | `GET /api/users`, `GET /api/users/options`, `POST /api/users`, `PATCH /api/users/:id` |
 | Reference | `GET /api/customers`, `GET /api/products` |
 | Deals | `GET/POST /api/deals`, `GET/PATCH /api/deals/:id`, `POST /api/deals/:id/discount-request`, `GET /api/deals/:id/approvals`, `POST /api/deals/:id/convert` |

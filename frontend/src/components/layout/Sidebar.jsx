@@ -14,6 +14,7 @@ const NAV = [
 ];
 const ADMIN_NAV = [
   { to: '/settings/users', label: 'Users', icon: 'users', permission: 'user.manage' },
+  { to: '/settings/roles', label: 'Roles', icon: 'shield', permission: 'role.manage' },
   { to: '/settings/approvals', label: 'Approval rules', icon: 'settings', permission: 'approval_config.manage' },
 ];
 

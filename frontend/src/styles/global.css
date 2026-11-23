@@ -154,6 +154,22 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; }
 .cell-title { font-weight: 500; }
 .cell-sub { font-size: 12px; color: var(--text-muted); }
 .capitalize { text-transform: capitalize; }
+
+/* role permission grid: one row per permission, scope as a segmented choice */
+.perm-grid p { margin: 0 0 4px; }
+.perm-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--border); }
+.perm-row b { font-size: 13px; }
+.segmented { display: inline-flex; flex-shrink: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.segmented label { position: relative; padding: 5px 10px; font-size: 12px; cursor: pointer; color: var(--text-muted); background: var(--surface); }
+.segmented label + label { border-left: 1px solid var(--border); }
+.segmented input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: inherit; }
+.segmented label.is-selected { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.segmented label:has(input:disabled) { cursor: not-allowed; opacity: .45; }
+.segmented label.is-selected:has(input:disabled) { opacity: 1; }
+.segmented label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: -2px; }
+@media (max-width: 600px) {
+  .perm-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
 .cell-actions { display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; }
 
 /* ---------- modal ---------- */
