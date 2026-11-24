@@ -1,5 +1,9 @@
 # DealDesk
 
+[![CI](https://github.com/Farzana-firosh/dealdesk/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Farzana-firosh/dealdesk/actions/workflows/ci.yml)
+
+**Live demo:** https://dealdesk-ui.onrender.com (sign in with one click as any demo role). It runs on free hosting that sleeps when idle, so the first load can take about a minute.
+
 DealDesk is a backend for deals, discount approvals, realtime deal chat and invoicing through **BillPort**. BillPort is a separate, deliberately unreliable billing service included in this repo.
 
 | App | Port | What it is |
