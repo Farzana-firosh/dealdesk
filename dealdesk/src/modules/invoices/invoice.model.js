@@ -34,8 +34,9 @@ const invoiceSchema = new mongoose.Schema(
 
 invoiceSchema.index({ pushStatus: 1, nextPushAt: 1 }); // push worker
 invoiceSchema.index({ status: 1, statusUpdatedAt: 1 }); // reconciliation
-invoiceSchema.index({ ownerId: 1 });
-invoiceSchema.index({ branchId: 1 });
+// scope filter + newest-first list, same shape as the deal indexes
+invoiceSchema.index({ ownerId: 1, createdAt: -1 });
+invoiceSchema.index({ branchId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);
 Object.assign(module.exports, { INVOICE_STATUSES, FINAL_STATUSES, PUSH_STATUSES });

@@ -5,12 +5,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useSocketEvent } from '../../context/SocketContext';
 import useAsync from '../../hooks/useAsync';
-import { Button, Card, PageHeader, Select, StatusBadge, Table } from '../../components/common';
+import { Button, Card, PageHeader, Pagination, Select, StatusBadge, Table } from '../../components/common';
 import { formatDate, formatMoney, LOST_REASONS } from '../../utils/format';
 import NewDealDrawer from './NewDealDrawer';
 import DiscountModal from './DiscountModal';
 import ApprovalHistoryDrawer from './ApprovalHistoryDrawer';
 import LostDealModal from './LostDealModal';
+
+const PAGE_SIZE = 20;
 
 const STATUS_OPTIONS = [
   { value: 'open', label: 'Open' },
@@ -35,8 +37,22 @@ export default function DealsPage() {
     }
   }, [location, navigate, can]);
 
-  const { data, loading, reload } = useAsync(() => api.get(`/deals${status ? `?status=${status}` : ''}`), [status]);
+  const [page, setPage] = useState(1);
+  const { data, loading, reload } = useAsync(
+    () => api.get(`/deals?page=${page}&limit=${PAGE_SIZE}${status ? `&status=${status}` : ''}`),
+    [status, page],
+  );
   useSocketEvent('notification', reload); // approval decisions change deal status
+
+  // the last page can empty out (e.g. a filtered deal changes status): step back to the new last page
+  useEffect(() => {
+    if (data && data.total && page > data.pages) setPage(data.pages);
+  }, [data, page]);
+
+  const changeStatus = (value) => {
+    setStatus(value);
+    setPage(1);
+  };
 
   const convert = async (deal) => {
     try {
@@ -114,7 +130,7 @@ export default function DealsPage() {
     <>
       <PageHeader title="Deals">
         <div className="filter">
-          <Select value={status} onChange={(e) => setStatus(e.target.value)} placeholder="All statuses" options={STATUS_OPTIONS} />
+          <Select value={status} onChange={(e) => changeStatus(e.target.value)} placeholder="All statuses" options={STATUS_OPTIONS} />
         </div>
         <Button icon="refresh" onClick={reload} aria-label="Refresh" />
         {can('deal.edit') && <Button variant="primary" icon="plus" onClick={() => setModal({ type: 'new' })}>New deal</Button>}
@@ -122,6 +138,7 @@ export default function DealsPage() {
 
       <Card padded={false} className="card-fill">
         <Table columns={columns} rows={data?.deals} loading={loading && !data} empty="No deals in your scope" />
+        {data && <Pagination page={data.page} pages={data.pages} total={data.total} limit={data.limit} noun="deal" onChange={setPage} />}
       </Card>
 
       <NewDealDrawer open={modal?.type === 'new'} onClose={close} onCreated={done} />

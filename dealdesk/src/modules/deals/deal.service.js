@@ -4,6 +4,7 @@ const Product = require('../products/product.model');
 const AppError = require('../../common/errors/AppError');
 const { scopeFilter } = require('../auth/scope');
 const { ensureThread } = require('../chat/chat.service');
+const { paginate } = require('../../common/utils/paginate');
 
 const POPULATE = [
   { path: 'customerId', select: 'name email' },
@@ -23,10 +24,12 @@ async function buildItems(items) {
   });
 }
 
-function listDeals(user, scope, { status } = {}) {
+// One page of the deals in scope, newest first (_id breaks createdAt ties so pages never overlap).
+function listDeals(user, scope, { status, page, limit }) {
   // only a known status string reaches the query (a repeated ?status= would arrive as an array)
   const filter = { ...scopeFilter(user, scope), ...(Deal.DEAL_STATUSES.includes(status) && { status }) };
-  return Deal.find(filter).sort({ createdAt: -1 }).populate(POPULATE).lean();
+  const query = Deal.find(filter).sort({ createdAt: -1, _id: -1 }).populate(POPULATE);
+  return paginate(query, Deal, filter, { page, limit });
 }
 
 // Scope is part of the query: an out-of-scope id behaves exactly like a missing one.

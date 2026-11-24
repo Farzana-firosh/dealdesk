@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useSocketEvent } from '../context/SocketContext';
 import useAsync from '../hooks/useAsync';
-import { Badge, Button, Card, Drawer, PageHeader, StatCard, StatusBadge, Table } from '../components/common';
+import { Badge, Button, Card, Drawer, PageHeader, Pagination, StatCard, StatusBadge, Table } from '../components/common';
 import { countOf, formatDate, formatMoney } from '../utils/format';
 
 const OPEN = ['pending', 'sent', 'viewed'];
+const PAGE_SIZE = 20;
 
 const OUTCOME_TONE = (o) =>
   o === 'success' || o === 'applied' || o.startsWith('repaired') ? 'success'
@@ -46,8 +47,13 @@ export default function InvoicesPage() {
   const { can } = useAuth();
   const toast = useToast();
   const [logsFor, setLogsFor] = useState(null);
-  const { data, loading, reload } = useAsync(() => api.get('/invoices'), []);
+  const [page, setPage] = useState(1);
+  const { data, loading, reload } = useAsync(() => api.get(`/invoices?page=${page}&limit=${PAGE_SIZE}`), [page]);
   useSocketEvent('notification', reload);
+
+  useEffect(() => {
+    if (data && data.total && page > data.pages) setPage(data.pages);
+  }, [data, page]);
 
   const act = async (path, message) => {
     try {
@@ -60,9 +66,9 @@ export default function InvoicesPage() {
   };
 
   const invoices = data?.invoices || [];
-  const open = invoices.filter((i) => OPEN.includes(i.status));
-  const outstanding = open.reduce((s, i) => s + i.amount, 0);
-  const failed = invoices.filter((i) => i.pushStatus === 'failed').length;
+  // totals over every invoice in scope, from the server (the table only holds one page)
+  const summary = data?.summary ?? { total: 0, paid: 0, outstanding: { count: 0, amount: 0 }, failedPush: 0 };
+  const failed = summary.failedPush;
 
   const columns = [
     { key: 'number', header: 'Invoice', render: (i) => (<><div className="cell-title mono">{i.number}</div><div className="cell-sub">{i.customerId?.name}</div></>) },
@@ -104,14 +110,15 @@ export default function InvoicesPage() {
       </PageHeader>
 
       <div className="stat-grid">
-        <StatCard tone="primary" label="Invoices" value={invoices.length} sub="All issued" />
-        <StatCard tone="success" label="Paid" value={invoices.filter((i) => i.status === 'paid').length} sub="Settled by the customer" />
-        <StatCard tone="info" label="Outstanding" value={formatMoney(outstanding)} sub={countOf(open.length, 'invoice')} />
+        <StatCard tone="primary" label="Invoices" value={summary.total} sub="All issued" />
+        <StatCard tone="success" label="Paid" value={summary.paid} sub="Settled by the customer" />
+        <StatCard tone="info" label="Outstanding" value={formatMoney(summary.outstanding.amount)} sub={countOf(summary.outstanding.count, 'invoice')} />
         <StatCard tone="danger" label="Push failed" value={failed} sub={failed ? 'Retry from the row' : 'All delivered'} />
       </div>
 
       <Card padded={false} className="card-fill">
         <Table columns={columns} rows={invoices} loading={loading && !data} empty="No invoices yet – convert a won deal" />
+        {data && <Pagination page={data.page} pages={data.pages} total={data.total} limit={data.limit} noun="invoice" onChange={setPage} />}
       </Card>
       <LogsModal invoice={logsFor} onClose={() => setLogsFor(null)} />
     </>

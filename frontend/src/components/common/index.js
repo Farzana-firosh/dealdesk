@@ -8,6 +8,7 @@ export { default as Icon } from './Icon';
 export { default as Input } from './Input';
 export { default as Modal, Drawer } from './Modal';
 export { default as PageHeader } from './PageHeader';
+export { default as Pagination } from './Pagination';
 export { default as Select } from './Select';
 export { default as StatCard } from './StatCard';
 export { default as Table } from './Table';

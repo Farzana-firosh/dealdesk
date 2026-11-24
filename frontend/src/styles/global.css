@@ -769,6 +769,10 @@ a.mini-row:hover { background: rgba(184, 208, 222, 0.18); }
 /* ---------- misc ---------- */
 pre.json { margin: 0; font-family: var(--mono); font-size: 12px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; white-space: pre-wrap; word-break: break-word; }
 
+/* ---------- pagination footer ---------- */
+.pager { display: flex; align-items: center; gap: 8px; padding: 8px 12px 8px 20px; border-top: 1px solid var(--border-soft); font-size: 13px; flex-shrink: 0; }
+.pager-page { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 92px; text-align: center; }
+
 /* ---------- integration health ---------- */
 /* summary strip: status + four numbers, divided by hairlines */
 .health-summary { display: grid; grid-template-columns: minmax(0, 1.7fr) repeat(4, minmax(0, 1fr)); margin-bottom: 14px; }

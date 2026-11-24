@@ -1,8 +1,9 @@
 const dealService = require('./deal.service');
+const { pageParams } = require('../../common/utils/paginate');
 
 async function list(req, res) {
-  const deals = await dealService.listDeals(req.user, req.scope, { status: req.query.status });
-  res.json({ scope: req.scope, count: deals.length, deals });
+  const { items, ...pageInfo } = await dealService.listDeals(req.user, req.scope, { status: req.query.status, ...pageParams(req.query) });
+  res.json({ scope: req.scope, count: items.length, ...pageInfo, deals: items });
 }
 
 async function getOne(req, res) {

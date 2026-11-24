@@ -9,37 +9,34 @@ import MonthlyChart from './MonthlyChart';
 import Ring from './Ring';
 import { ApprovalsArt, ChatArt, DealsArt, InvoicesArt, NewDealArt } from './Illustrations';
 
-const OPEN_INVOICE = ['pending', 'sent', 'viewed'];
 const RECENT = 4;
 
 // Everything the dashboard shows, fetched together; sections the role cannot see are skipped.
+// Invoices: one row is enough, the numbers come from the list's summary over the whole scope.
 async function loadDashboard(can) {
   const [summary, deals, pending, invoices] = await Promise.all([
     api.get('/analytics/deals'),
-    api.get('/deals'),
+    api.get(`/deals?limit=${RECENT}`),
     can('discount.approve') ? api.get('/approvals/pending') : null,
-    can('invoice.view') ? api.get('/invoices') : null,
+    can('invoice.view') ? api.get('/invoices?limit=1') : null,
   ]);
-  return { summary, deals: deals.deals, pending: pending?.requests ?? null, invoices: invoices?.invoices ?? null };
+  return { summary, deals: deals.deals, pending: pending?.requests ?? null, invoices: invoices?.summary ?? null };
 }
-
-const outstandingOf = (invoices) => (invoices ?? []).filter((i) => OPEN_INVOICE.includes(i.status));
 
 // Three shortcuts beside the greeting, picked from what the role can do.
 function quickActions(can, data, navigate) {
-  const open = outstandingOf(data?.invoices);
   return [
     can('deal.edit') && { Art: NewDealArt, title: 'New deal', text: 'Pick a customer and products', go: () => navigate('/deals', { state: { newDeal: true } }) },
     can('discount.approve') && { Art: ApprovalsArt, title: 'Approvals', text: data?.pending ? `${countOf(data.pending.length, 'request')} waiting on you` : 'Requests for your role', go: () => navigate('/approvals') },
-    can('invoice.view') && { Art: InvoicesArt, title: 'Invoices', text: data?.invoices ? `${formatMoney(open.reduce((s, i) => s + i.amount, 0))} outstanding` : 'Billing status', go: () => navigate('/invoices') },
+    can('invoice.view') && { Art: InvoicesArt, title: 'Invoices', text: data?.invoices ? `${formatMoney(data.invoices.outstanding.amount)} outstanding` : 'Billing status', go: () => navigate('/invoices') },
     can('chat.send') && { Art: ChatArt, title: 'Deal chat', text: 'Talk to your team per deal', go: () => navigate('/chat') },
     { Art: DealsArt, title: 'All deals', text: 'Your pipeline at a glance', go: () => navigate('/deals') },
   ].filter(Boolean).slice(0, 3);
 }
 
 function Attention({ pending, invoices }) {
-  const failed = invoices?.filter((i) => i.pushStatus === 'failed') ?? [];
-  const open = outstandingOf(invoices);
+  const failed = invoices?.failedPush ?? 0;
+  const open = invoices?.outstanding ?? { count: 0, amount: 0 };
   const rows = [];
 
   pending?.slice(0, 4).forEach((r) =>
@@ -54,24 +51,24 @@ function Attention({ pending, invoices }) {
       </Link>,
     ),
   );
-  if (failed.length) {
+  if (failed) {
     rows.push(
       <Link key="failed" to="/invoices" className="mini-row">
         <span className="mini-mark danger" />
         <div className="grow">
-          <div className="cell-title">{countOf(failed.length, 'invoice')} failed to reach BillPort</div>
+          <div className="cell-title">{countOf(failed, 'invoice')} failed to reach BillPort</div>
           <div className="cell-sub">Retry the push from the invoices page</div>
         </div>
       </Link>,
     );
   }
-  if (open.length) {
+  if (open.count) {
     rows.push(
       <Link key="outstanding" to="/invoices" className="mini-row">
         <span className="mini-mark info" />
         <div className="grow">
-          <div className="cell-title">{formatMoney(open.reduce((s, i) => s + i.amount, 0))} outstanding</div>
-          <div className="cell-sub">{countOf(open.length, 'invoice')} sent and not yet paid</div>
+          <div className="cell-title">{formatMoney(open.amount)} outstanding</div>
+          <div className="cell-sub">{countOf(open.count, 'invoice')} sent and not yet paid</div>
         </div>
       </Link>,
     );
