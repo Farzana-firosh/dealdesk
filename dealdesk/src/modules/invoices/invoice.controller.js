@@ -1,5 +1,6 @@
 const invoiceService = require('./invoice.service');
 const webhookService = require('./webhook.service');
+const { pageParams } = require('../../common/utils/paginate');
 
 async function convert(req, res) {
   const { sale, invoice } = await invoiceService.convertDeal(req.user, req.scope, req.params.id);
@@ -7,8 +8,8 @@ async function convert(req, res) {
 }
 
 async function list(req, res) {
-  const invoices = await invoiceService.listInvoices(req.user, req.scope, { status: req.query.status });
-  res.json({ count: invoices.length, invoices });
+  const { items, ...pageInfo } = await invoiceService.listInvoices(req.user, req.scope, { status: req.query.status, ...pageParams(req.query) });
+  res.json({ count: items.length, ...pageInfo, invoices: items });
 }
 
 async function getOne(req, res) {
@@ -33,7 +34,8 @@ async function billportWebhook(req, res) {
   res.status(result.status).json({ received: result.status === 200 });
 
   if (result.eventId) {
-    setImmediate(() => webhookService.processEvent(result.eventId).catch((err) => console.error('[webhook]', err)));
+    // req.log keeps the request id on the line; the sweep job retries the event anyway
+    setImmediate(() => webhookService.processEvent(result.eventId).catch((err) => req.log.error({ err }, 'webhook processing failed')));
   }
 }
 

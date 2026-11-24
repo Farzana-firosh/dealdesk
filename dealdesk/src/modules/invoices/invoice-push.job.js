@@ -2,6 +2,7 @@ const env = require('../../config/env');
 const Invoice = require('./invoice.model');
 const IntegrationLog = require('./integration-log.model');
 const billport = require('./billport.client');
+const logger = require('../../common/logger');
 
 const LOCK_MS = env.billport.timeoutMs * 3; // a crashed worker's claim expires after this
 
@@ -47,7 +48,21 @@ async function pushOne(invoice) {
     update = { pushStatus: 'failed', pushError: result.error || `HTTP ${result.status}` };
   }
 
-  await Invoice.updateOne({ _id: invoice._id }, { $set: { ...update, pushLockedUntil: null } });
+  // Guarded write: if the invoice was cancelled while this push was in flight, the worker must
+  // not flip it back to retrying (and push a cancelled invoice later) or to succeeded.
+  const applied = await Invoice.updateOne(
+    { _id: invoice._id, pushStatus: { $in: ['queued', 'retrying'] } },
+    { $set: { ...update, pushLockedUntil: null } },
+  );
+  if (!applied.matchedCount) {
+    // keep BillPort's id if it did create the invoice, so the record and the audit trail still match
+    await Invoice.updateOne(
+      { _id: invoice._id },
+      { $set: { pushLockedUntil: null, ...(result.ok && { externalId: result.body.externalId }) } },
+    );
+    outcome = `cancelled_during_push (${outcome})`;
+  }
+
   await IntegrationLog.create({
     invoiceId: invoice._id,
     externalId: result.body?.externalId,
@@ -59,7 +74,10 @@ async function pushOne(invoice) {
     error: result.error,
     durationMs: result.durationMs,
   });
-  console.log(`[push] ${invoice.number} attempt ${attempt}: ${result.ok ? 'ok' : result.error || result.status} -> ${outcome}`);
+  logger[result.ok ? 'info' : 'warn'](
+    { invoice: invoice.number, attempt, status: result.status, error: result.error, outcome },
+    'invoice push attempt',
+  );
 }
 
 async function runPushCycle() {
@@ -68,4 +86,4 @@ async function runPushCycle() {
   }
 }
 
-module.exports = { runPushCycle, backoffMs };
+module.exports = { runPushCycle, backoffMs, claimNext, pushOne };

@@ -24,7 +24,8 @@ async function reject(req, res) {
 }
 
 async function getConfig(req, res) {
-  res.json({ config: await configService.getConfig() });
+  const [config, roles] = await Promise.all([configService.getConfig(), configService.stepRoleNames()]);
+  res.json({ config, roles });
 }
 
 async function replaceConfig(req, res) {

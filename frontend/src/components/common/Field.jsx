@@ -1,5 +1,6 @@
 // Label + hint/error wrapper shared by Input, Select and TextArea.
-export default function Field({ label, hint, error, htmlFor, aside, children }) {
+// `messageId` lets the control point at the hint/error text with aria-describedby.
+export default function Field({ label, hint, error, htmlFor, aside, messageId, children }) {
   return (
     <div className="field">
       {(label || aside) && (
@@ -10,7 +11,11 @@ export default function Field({ label, hint, error, htmlFor, aside, children }) 
         </div>
       )}
       {children}
-      {error ? <span className="field-error">{error}</span> : hint && <span className="field-hint">{hint}</span>}
+      {error ? (
+        <span id={messageId} className="field-error">{error}</span>
+      ) : (
+        hint && <span id={messageId} className="field-hint">{hint}</span>
+      )}
     </div>
   );
 }

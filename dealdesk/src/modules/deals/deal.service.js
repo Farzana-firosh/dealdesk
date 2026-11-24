@@ -1,9 +1,10 @@
 const Deal = require('./deal.model');
-const Customer = require('../customers/customer.model');
+const { assertCustomerInScope } = require('../customers/customer.service');
 const Product = require('../products/product.model');
 const AppError = require('../../common/errors/AppError');
 const { scopeFilter } = require('../auth/scope');
 const { ensureThread } = require('../chat/chat.service');
+const { paginate } = require('../../common/utils/paginate');
 
 const POPULATE = [
   { path: 'customerId', select: 'name email' },
@@ -23,13 +24,12 @@ async function buildItems(items) {
   });
 }
 
-async function assertCustomer(customerId) {
-  if (!(await Customer.exists({ _id: customerId }))) throw AppError.badRequest('Unknown customer');
-}
-
-function listDeals(user, scope, { status } = {}) {
-  const filter = { ...scopeFilter(user, scope), ...(status && { status }) };
-  return Deal.find(filter).sort({ createdAt: -1 }).populate(POPULATE).lean();
+// One page of the deals in scope, newest first (_id breaks createdAt ties so pages never overlap).
+function listDeals(user, scope, { status, page, limit }) {
+  // only a known status string reaches the query (a repeated ?status= would arrive as an array)
+  const filter = { ...scopeFilter(user, scope), ...(Deal.DEAL_STATUSES.includes(status) && { status }) };
+  const query = Deal.find(filter).sort({ createdAt: -1, _id: -1 }).populate(POPULATE);
+  return paginate(query, Deal, filter, { page, limit });
 }
 
 // Scope is part of the query: an out-of-scope id behaves exactly like a missing one.
@@ -41,7 +41,7 @@ async function getDeal(user, scope, dealId, { populate = true } = {}) {
 }
 
 async function createDeal(user, { title, customerId, items }) {
-  await assertCustomer(customerId);
+  await assertCustomerInScope(user, customerId); // no deals for another branch's customers
   const deal = await Deal.create({
     title,
     customerId,
@@ -59,7 +59,7 @@ async function updateDeal(user, scope, dealId, changes) {
 
   if (changes.title) deal.title = changes.title;
   if (changes.customerId) {
-    await assertCustomer(changes.customerId);
+    await assertCustomerInScope(user, changes.customerId);
     deal.customerId = changes.customerId;
   }
   if (changes.items) deal.items = await buildItems(changes.items);
@@ -67,4 +67,18 @@ async function updateDeal(user, scope, dealId, changes) {
   return deal.save();
 }
 
-module.exports = { listDeals, getDeal, createDeal, updateDeal };
+// Only an open deal can be lost: a pending one waits for its approvers, and a won one may be invoiced.
+// Lost is final and starts nothing (no approval, no invoice).
+async function markLost(user, scope, dealId, { reason, notes }) {
+  const deal = await getDeal(user, scope, dealId, { populate: false });
+  // conditional on `open`, so a discount request racing this one cannot also win
+  const lost = await Deal.findOneAndUpdate(
+    { _id: deal._id, status: 'open' },
+    { status: 'lost', lostReason: reason, lostNotes: notes || undefined, closedAt: new Date() },
+    { returnDocument: 'after', runValidators: true },
+  );
+  if (!lost) throw AppError.conflict(`Deal is ${deal.status}; only open deals can be marked lost`);
+  return lost;
+}
+
+module.exports = { listDeals, getDeal, createDeal, updateDeal, markLost };

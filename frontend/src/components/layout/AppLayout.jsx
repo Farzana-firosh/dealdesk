@@ -1,38 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import Header from './Header';
 import Sidebar from './Sidebar';
-import NotificationBell from './NotificationBell';
-import { useSocket } from '../../context/SocketContext';
-import { Button } from '../common';
 
-const TITLES = {
-  '/deals': 'Deals',
-  '/chat': 'Deal chat',
-  '/approvals': 'Approvals',
-  '/invoices': 'Invoices',
-  '/settings/approvals': 'Approval rules',
-};
+const COLLAPSED_KEY = 'dealdesk.sidebar.collapsed';
 
+// A per-browser preference; storage can be unavailable (private mode), so failures are ignored.
+function useStoredFlag(key) {
+  const [value, setValue] = useState(() => {
+    try {
+      return localStorage.getItem(key) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const update = (next) => {
+    setValue(next);
+    try {
+      localStorage.setItem(key, next ? '1' : '0');
+    } catch {
+      /* keep it for this session only */
+    }
+  };
+  return [value, update];
+}
+
+/** Fixed header on top; below it the floating sidebar and the scrolling page. */
 export default function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { connected } = useSocket();
+  const [collapsed, setCollapsed] = useStoredFlag(COLLAPSED_KEY);
   const { pathname } = useLocation();
-  const title = Object.entries(TITLES).find(([path]) => pathname.startsWith(path))?.[1] || 'DealDesk';
   const isChat = pathname.startsWith('/chat');
 
-  return (
-    <div className="app">
-      <Sidebar open={menuOpen} onNavigate={() => setMenuOpen(false)} />
-      <div className={`sidebar-overlay${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(false)} />
+  // the mobile drawer closes itself on navigation (including back/forward) and on Escape
+  useEffect(() => setMenuOpen(false), [pathname]);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (e) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
-      <div className="main">
-        <header className="topbar">
-          <Button variant="ghost" icon="menu" className="menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Open menu" />
-          <h1>{title}</h1>
-          <span className="spacer" />
-          <span className={`live-dot${connected ? ' on' : ''}`}>{connected ? 'Live' : 'Offline'}</span>
-          <NotificationBell />
-        </header>
+  return (
+    <div className={`app${collapsed ? ' is-collapsed' : ''}`}>
+      <Header onOpenMenu={() => setMenuOpen(true)} />
+      <div className="shell">
+        <Sidebar open={menuOpen} collapsed={collapsed} onToggleCollapsed={() => setCollapsed(!collapsed)} onNavigate={() => setMenuOpen(false)} />
+        <div className={`sidebar-overlay${menuOpen ? ' open' : ''}`} onClick={() => setMenuOpen(false)} />
         <main className={`content${isChat ? ' flush' : ''}`}>
           <Outlet />
         </main>

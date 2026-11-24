@@ -3,16 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useSocketEvent } from '../../context/SocketContext';
 import { api } from '../../api/client';
 import useAsync from '../../hooks/useAsync';
-import { Avatar, Button, Icon } from '../common';
-
-// Navigation is filtered by permission, mirroring what the API allows.
-const NAV = [
-  { to: '/deals', label: 'Deals', icon: 'deals', permission: 'deal.view' },
-  { to: '/chat', label: 'Deal chat', icon: 'chat', permission: 'chat.send', badge: 'unread' },
-  { to: '/approvals', label: 'Approvals', icon: 'approvals', permission: 'discount.approve', badge: 'pending' },
-  { to: '/invoices', label: 'Invoices', icon: 'invoices', permission: 'invoice.view' },
-];
-const ADMIN_NAV = [{ to: '/settings/approvals', label: 'Approval rules', icon: 'settings', permission: 'approval_config.manage' }];
+import { Icon } from '../common';
+import { NAV_SECTIONS } from './nav';
 
 function useCounts(can) {
   const { data, reload } = useAsync(async () => {
@@ -31,40 +23,41 @@ function useCounts(can) {
   return data || {};
 }
 
-export default function Sidebar({ open, onNavigate }) {
-  const { user, can, logout } = useAuth();
+/** Floating navigation panel under the header. Desktop: full or icon rail. Mobile: a drawer. */
+export default function Sidebar({ open, collapsed, onToggleCollapsed, onNavigate }) {
+  const { can } = useAuth();
   const counts = useCounts(can);
 
-  const renderLink = (item) =>
-    can(item.permission) && (
-      <NavLink key={item.to} to={item.to} className="nav-link" onClick={onNavigate}>
-        <Icon name={item.icon} />
-        {item.label}
-        {item.badge && counts[item.badge] > 0 && <span className="count">{counts[item.badge]}</span>}
-      </NavLink>
-    );
-
-  const adminLinks = ADMIN_NAV.map(renderLink).filter(Boolean);
-
   return (
-    <aside className={`sidebar${open ? ' open' : ''}`}>
-      <div className="brand">
-        <span className="brand-mark">D</span>
-        DealDesk
-      </div>
-      <div className="nav-section">Workspace</div>
-      {NAV.map(renderLink)}
-      {adminLinks.length > 0 && <div className="nav-section">Admin</div>}
-      {adminLinks}
+    <aside className={`sidebar${open ? ' open' : ''}`} aria-label="Main navigation">
+      <nav className="sidebar-nav">
+        {NAV_SECTIONS.map((section) => {
+          const items = section.items.filter((item) => can(item.permission));
+          if (!items.length) return null;
+          return (
+            <div key={section.label} className="nav-group">
+              <div className="nav-section">{section.label}</div>
+              {items.map((item) => {
+                const count = item.badge ? counts[item.badge] : 0;
+                return (
+                  <NavLink key={item.to} to={item.to} onClick={onNavigate} data-label={item.label}
+                    className={({ isActive }) => ['nav-link', isActive && 'active', count > 0 && 'has-badge'].filter(Boolean).join(' ')}>
+                    <Icon name={item.icon} />
+                    <span className="nav-label">{item.label}</span>
+                    {count > 0 && <span className="count">{count}</span>}
+                  </NavLink>
+                );
+              })}
+            </div>
+          );
+        })}
+      </nav>
 
-      <div className="sidebar-footer">
-        <Avatar name={user.name} size={34} />
-        <div className="sidebar-user">
-          <b>{user.name}</b>
-          <span className="faint">{user.role.name.replace('_', ' ')}</span>
-        </div>
-        <Button variant="ghost" icon="logout" onClick={logout} title="Sign out" aria-label="Sign out" />
-      </div>
+      <button type="button" className="sidebar-toggle" onClick={onToggleCollapsed}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} data-label={collapsed ? 'Expand' : 'Collapse'}>
+        <Icon name={collapsed ? 'arrowRight' : 'arrowLeft'} size={16} />
+        <span className="nav-label">Collapse</span>
+      </button>
     </aside>
   );
 }

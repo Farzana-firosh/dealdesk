@@ -3,13 +3,16 @@ const env = require('../config/env');
 const authService = require('../modules/auth/auth.service');
 const chatService = require('../modules/chat/chat.service');
 const { rooms, setIo } = require('./emitter');
+const logger = require('../common/logger');
 
 // Wraps a socket handler so every result/error goes back through the client's ack callback.
 const withAck = (handler) => async (payload, ack = () => {}) => {
   try {
     ack({ ok: true, ...(await handler(payload)) });
   } catch (err) {
-    ack({ ok: false, error: err.status && err.status < 500 ? err.message : 'Internal error' });
+    const expected = err.status && err.status < 500;
+    if (!expected) logger.error({ err }, 'socket handler failed');
+    ack({ ok: false, error: expected ? err.message : 'Internal error' });
   }
 };
 

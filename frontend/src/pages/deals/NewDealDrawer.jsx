@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
-import { Button, Input, Modal, Select } from '../../components/common';
+import { Button, Drawer, Input, Select } from '../../components/common';
 import { formatMoney } from '../../utils/format';
 
 const EMPTY = { title: '', customerId: '', productId: '', quantity: 1 };
 
-export default function NewDealModal({ open, onClose, onCreated }) {
+export default function NewDealDrawer({ open, onClose, onCreated }) {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
   const [refs, setRefs] = useState({ customers: [], products: [] });
@@ -40,8 +40,9 @@ export default function NewDealModal({ open, onClose, onCreated }) {
   };
 
   return (
-    <Modal
+    <Drawer
       title="New deal"
+      subtitle="Prices are taken from the product catalogue when the deal is created."
       open={open}
       onClose={onClose}
       footer={
@@ -66,6 +67,6 @@ export default function NewDealModal({ open, onClose, onCreated }) {
           </div>
         )}
       </div>
-    </Modal>
+    </Drawer>
   );
 }

@@ -3,14 +3,21 @@ const jwt = require('jsonwebtoken');
 const env = require('../../config/env');
 const User = require('../users/user.model');
 const AppError = require('../../common/errors/AppError');
+const { demoEmailFor } = require('./demo');
+
+const JWT_ALGORITHM = 'HS256';
+
+// Compared against when the email is unknown, so a login takes the same time whether or not
+// the account exists (otherwise the response time reveals which emails are registered).
+const DUMMY_HASH = bcrypt.hashSync('no-such-user', 10);
 
 function signToken(user) {
-  return jwt.sign({ sub: String(user._id) }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
+  return jwt.sign({ sub: String(user._id) }, env.jwtSecret, { algorithm: JWT_ALGORITHM, expiresIn: env.jwtExpiresIn });
 }
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, env.jwtSecret);
+    return jwt.verify(token, env.jwtSecret, { algorithms: [JWT_ALGORITHM] });
   } catch {
     throw AppError.unauthorized('Invalid or expired token');
   }
@@ -39,9 +46,17 @@ async function login(email, password) {
     .select('+passwordHash')
     .populate('roleId');
 
-  const valid = user && (await bcrypt.compare(password, user.passwordHash));
-  if (!valid) throw AppError.unauthorized('Invalid email or password');
+  const passwordOk = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !passwordOk) throw AppError.unauthorized('Invalid email or password');
 
+  return { token: signToken(user), user: toPrincipal(user) };
+}
+
+// Demo sign-in without a password. Only exists when DEMO_MODE is on; otherwise the route is a 404.
+async function demoLogin(accountKey) {
+  if (!env.demoMode) throw AppError.notFound();
+  const user = await User.findOne({ email: demoEmailFor(accountKey), active: true }).populate('roleId');
+  if (!user?.roleId) throw AppError.notFound('Demo account is not available');
   return { token: signToken(user), user: toPrincipal(user) };
 }
 
@@ -54,4 +69,4 @@ async function principalFromToken(token) {
 
 const hashPassword = (plain) => bcrypt.hash(plain, 10);
 
-module.exports = { login, principalFromToken, hashPassword };
+module.exports = { login, demoLogin, principalFromToken, hashPassword };

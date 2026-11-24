@@ -49,6 +49,13 @@ async function toRoleIds(bands) {
   return bands.map((b) => ({ ...b, steps: b.steps.map((name) => idByName.get(name)) }));
 }
 
+// The role names a band step may use. Served with the config so the editor
+// does not need role.manage just to fill its picker.
+async function stepRoleNames() {
+  const roles = await Role.find({}, 'name').sort({ name: 1 }).lean();
+  return roles.map((r) => r.name);
+}
+
 async function replaceConfig(user, bands) {
   const resolved = await toRoleIds(assertContiguous(bands));
   await ApprovalConfig.findOneAndUpdate(
@@ -59,4 +66,4 @@ async function replaceConfig(user, bands) {
   return getConfig();
 }
 
-module.exports = { getConfig, resolveChain, replaceConfig, CONFIG_KEY };
+module.exports = { getConfig, stepRoleNames, resolveChain, replaceConfig, CONFIG_KEY };

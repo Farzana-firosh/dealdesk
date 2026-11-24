@@ -20,4 +20,17 @@ function scopeFilter(user, scope, { ownerField = 'ownerId', branchField = 'branc
 // Scope the user holds for a permission, or null. For services that need a second permission's scope.
 const scopeFor = (user, key) => user.role.permissions.find((p) => p.key === key)?.scope ?? null;
 
-module.exports = { scopeFilter, scopeFor };
+const SCOPE_RANK = { own: 0, branch: 1, all: 2 };
+
+// Keys in `grants` the user does not hold at the same or a wider scope. Stops anyone handing out,
+// or managing someone with, more access than they have themselves.
+function grantsNotHeld(user, grants) {
+  return grants
+    .filter((g) => {
+      const held = scopeFor(user, g.key);
+      return !held || SCOPE_RANK[held] < SCOPE_RANK[g.scope];
+    })
+    .map((g) => g.key);
+}
+
+module.exports = { scopeFilter, scopeFor, grantsNotHeld };

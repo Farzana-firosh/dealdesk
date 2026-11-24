@@ -6,15 +6,20 @@ function listPermissions(req, res) {
 }
 
 async function list(req, res) {
-  res.json({ roles: await roleService.listRoles() });
+  res.json({ roles: await roleService.listRoles(req.user) });
 }
 
 async function create(req, res) {
-  res.status(201).json({ role: await roleService.createRole(req.body) });
+  res.status(201).json({ role: await roleService.createRole(req.user, req.body) });
 }
 
 async function update(req, res) {
-  res.json({ role: await roleService.updateRole(req.params.id, req.body) });
+  res.json({ role: await roleService.updateRole(req.user, req.params.id, req.body) });
 }
 
-module.exports = { listPermissions, list, create, update };
+async function remove(req, res) {
+  await roleService.deleteRole(req.user, req.params.id);
+  res.status(204).end();
+}
+
+module.exports = { listPermissions, list, create, update, remove };

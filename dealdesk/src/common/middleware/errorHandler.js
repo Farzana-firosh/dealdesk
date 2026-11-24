@@ -4,7 +4,7 @@ function notFound(req, res, next) {
   next(AppError.notFound(`Route ${req.method} ${req.originalUrl} not found`));
 }
 
-// eslint-disable-next-line no-unused-vars
+// Express recognises an error handler by its four arguments, so `next` must stay.
 function errorHandler(err, req, res, next) {
   let status = err.status || 500;
   let message = err.message;
@@ -26,9 +26,11 @@ function errorHandler(err, req, res, next) {
     message = 'Duplicate value';
   }
 
+  // Unexpected errors: full details go to the log only; the client gets the request id to quote.
   if (status >= 500) {
-    console.error(err);
-    message = 'Internal server error';
+    req.log.error({ err }, 'unhandled error');
+    res.status(status).json({ error: 'Internal server error', requestId: req.id });
+    return;
   }
 
   res.status(status).json({ error: message, ...(details && { details }) });

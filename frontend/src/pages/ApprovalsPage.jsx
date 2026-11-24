@@ -3,8 +3,8 @@ import { api } from '../api/client';
 import { useToast } from '../context/ToastContext';
 import { useSocketEvent } from '../context/SocketContext';
 import useAsync from '../hooks/useAsync';
-import { Avatar, Badge, Button, Card, Modal, Table, TextArea } from '../components/common';
-import { formatDate, formatMoney } from '../utils/format';
+import { Avatar, Badge, Button, Card, Modal, PageHeader, Table, TextArea } from '../components/common';
+import { formatDate, formatMoney, roleLabel } from '../utils/format';
 
 function DecisionModal({ decision, onClose, onDone }) {
   const toast = useToast();
@@ -72,7 +72,7 @@ export default function ApprovalsPage() {
     {
       key: 'step',
       header: 'Your step',
-      render: (r) => `${r.currentStep} of ${r.steps.length} · ${r.steps[r.currentStep - 1].roleName.replace('_', ' ')}`,
+      render: (r) => `${r.currentStep} of ${r.steps.length} · ${roleLabel(r.steps[r.currentStep - 1].roleName)}`,
     },
     {
       key: 'by',
@@ -103,15 +103,10 @@ export default function ApprovalsPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h2>Waiting on you</h2>
-          <p>Only requests whose current step is addressed to your role appear here.</p>
-        </div>
-        <span className="spacer" />
+      <PageHeader title="Approvals waiting on you">
         <Button icon="refresh" onClick={reload} aria-label="Refresh" />
-      </div>
-      <Card padded={false}>
+      </PageHeader>
+      <Card padded={false} className="card-fill">
         <Table columns={columns} rows={data?.requests} loading={loading && !data} empty="Nothing is waiting on you" />
       </Card>
       <DecisionModal

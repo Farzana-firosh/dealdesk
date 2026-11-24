@@ -20,7 +20,8 @@ const record = (request, step, user, action, remarks) =>
 
 async function markDealWon(dealId, discountPercent) {
   const deal = await Deal.findById(dealId);
-  deal.set({ status: 'won', discountPercent, wonAt: new Date() });
+  const now = new Date();
+  deal.set({ status: 'won', discountPercent, wonAt: now, closedAt: now });
   return deal.save(); // save (not update) so totals are recalculated
 }
 

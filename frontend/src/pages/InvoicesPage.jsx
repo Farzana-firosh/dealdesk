@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useSocketEvent } from '../context/SocketContext';
 import useAsync from '../hooks/useAsync';
-import { Badge, Button, Card, Modal, StatusBadge, Table } from '../components/common';
-import { formatDate, formatMoney } from '../utils/format';
+import { Badge, Button, Card, Drawer, PageHeader, Pagination, StatCard, StatusBadge, Table } from '../components/common';
+import { countOf, formatDate, formatMoney } from '../utils/format';
+
+const OPEN = ['pending', 'sent', 'viewed'];
+const PAGE_SIZE = 20;
 
 const OUTCOME_TONE = (o) =>
   o === 'success' || o === 'applied' || o.startsWith('repaired') ? 'success'
@@ -31,12 +34,12 @@ function LogsModal({ invoice, onClose }) {
   ];
 
   return (
-    <Modal title={invoice ? `Integration log · ${invoice.number}` : ''} open={Boolean(invoice)} onClose={onClose} size="lg">
+    <Drawer title="Integration log" subtitle={invoice?.number} open={Boolean(invoice)} onClose={onClose} size="lg">
       <p className="muted" style={{ marginTop: 0 }}>Every push attempt, webhook and reconciliation for this invoice – the answer to “why does it say unpaid?”.</p>
       <div className="card">
         <Table columns={columns} rows={data?.logs} loading={loading} empty="No integration activity yet" />
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 
@@ -44,8 +47,13 @@ export default function InvoicesPage() {
   const { can } = useAuth();
   const toast = useToast();
   const [logsFor, setLogsFor] = useState(null);
-  const { data, loading, reload } = useAsync(() => api.get('/invoices'), []);
+  const [page, setPage] = useState(1);
+  const { data, loading, reload } = useAsync(() => api.get(`/invoices?page=${page}&limit=${PAGE_SIZE}`), [page]);
   useSocketEvent('notification', reload);
+
+  useEffect(() => {
+    if (data && data.total && page > data.pages) setPage(data.pages);
+  }, [data, page]);
 
   const act = async (path, message) => {
     try {
@@ -58,7 +66,9 @@ export default function InvoicesPage() {
   };
 
   const invoices = data?.invoices || [];
-  const outstanding = invoices.filter((i) => ['pending', 'sent', 'viewed'].includes(i.status)).reduce((s, i) => s + i.amount, 0);
+  // totals over every invoice in scope, from the server (the table only holds one page)
+  const summary = data?.summary ?? { total: 0, paid: 0, outstanding: { count: 0, amount: 0 }, failedPush: 0 };
+  const failed = summary.failedPush;
 
   const columns = [
     { key: 'number', header: 'Invoice', render: (i) => (<><div className="cell-title mono">{i.number}</div><div className="cell-sub">{i.customerId?.name}</div></>) },
@@ -70,7 +80,7 @@ export default function InvoicesPage() {
       render: (i) => (
         <>
           <StatusBadge status={i.pushStatus} />
-          <div className="cell-sub">{i.pushAttempts} attempt{i.pushAttempts === 1 ? '' : 's'}{i.pushError ? ` · ${i.pushError}` : ''}</div>
+          <div className="cell-sub">{countOf(i.pushAttempts, 'attempt')}{i.pushError ? ` · ${i.pushError}` : ''}</div>
         </>
       ),
     },
@@ -85,7 +95,7 @@ export default function InvoicesPage() {
           {i.pushStatus === 'failed' && can('invoice.issue') && (
             <Button size="sm" variant="primary" onClick={() => act(`/invoices/${i._id}/retry-push`, 'Push re-queued')}>Retry push</Button>
           )}
-          {['pending', 'sent', 'viewed'].includes(i.status) && can('invoice.cancel') && (
+          {OPEN.includes(i.status) && can('invoice.cancel') && (
             <Button size="sm" variant="danger" onClick={() => act(`/invoices/${i._id}/cancel`, 'Invoice cancelled')}>Cancel</Button>
           )}
         </div>
@@ -95,24 +105,20 @@ export default function InvoicesPage() {
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h2>Invoices</h2>
-          <p>Status is kept in sync with BillPort automatically (webhooks + reconciliation).</p>
-        </div>
-        <span className="spacer" />
+      <PageHeader title="Invoices">
         <Button icon="refresh" onClick={reload} aria-label="Refresh" />
-      </div>
+      </PageHeader>
 
       <div className="stat-grid">
-        <div className="card stat"><div className="stat-label">Invoices</div><div className="stat-value">{invoices.length}</div></div>
-        <div className="card stat"><div className="stat-label">Paid</div><div className="stat-value">{invoices.filter((i) => i.status === 'paid').length}</div></div>
-        <div className="card stat"><div className="stat-label">Outstanding</div><div className="stat-value mono" style={{ fontSize: 20 }}>{formatMoney(outstanding)}</div></div>
-        <div className="card stat"><div className="stat-label">Push failed</div><div className="stat-value">{invoices.filter((i) => i.pushStatus === 'failed').length}</div></div>
+        <StatCard tone="primary" label="Invoices" value={summary.total} sub="All issued" />
+        <StatCard tone="success" label="Paid" value={summary.paid} sub="Settled by the customer" />
+        <StatCard tone="info" label="Outstanding" value={formatMoney(summary.outstanding.amount)} sub={countOf(summary.outstanding.count, 'invoice')} />
+        <StatCard tone="danger" label="Push failed" value={failed} sub={failed ? 'Retry from the row' : 'All delivered'} />
       </div>
 
-      <Card padded={false}>
+      <Card padded={false} className="card-fill">
         <Table columns={columns} rows={invoices} loading={loading && !data} empty="No invoices yet – convert a won deal" />
+        {data && <Pagination page={data.page} pages={data.pages} total={data.total} limit={data.limit} noun="invoice" onChange={setPage} />}
       </Card>
       <LogsModal invoice={logsFor} onClose={() => setLogsFor(null)} />
     </>

@@ -8,8 +8,9 @@ function cors(req, res, next) {
   if (origin && env.corsOrigins.includes(origin)) {
     res.set({
       'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,OPTIONS',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Authorization,Content-Type',
+      'Access-Control-Expose-Headers': 'X-Request-Id',
       'Access-Control-Max-Age': '600',
     });
   }

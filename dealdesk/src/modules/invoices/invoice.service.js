@@ -6,6 +6,7 @@ const Invoice = require('./invoice.model');
 const IntegrationLog = require('./integration-log.model');
 const AppError = require('../../common/errors/AppError');
 const { scopeFilter } = require('../auth/scope');
+const { paginate } = require('../../common/utils/paginate');
 
 const invoiceNumber = () => `INV-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
 
@@ -61,11 +62,39 @@ async function convertDeal(user, scope, dealId) {
   return { sale, invoice };
 }
 
-function listInvoices(user, scope, { status } = {}) {
-  return Invoice.find({ ...scopeFilter(user, scope), ...(status && { status }) })
-    .sort({ createdAt: -1 })
-    .populate('customerId', 'name outstandingBalance')
-    .lean();
+const OPEN_STATUSES = ['pending', 'sent', 'viewed'];
+
+// Headline numbers over every invoice in scope (not just the current page or status filter).
+async function invoiceSummary(scoped) {
+  const [row] = await Invoice.aggregate([
+    { $match: scoped },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        paid: { $sum: { $cond: [{ $eq: ['$status', 'paid'] }, 1, 0] } },
+        openCount: { $sum: { $cond: [{ $in: ['$status', OPEN_STATUSES] }, 1, 0] } },
+        openAmount: { $sum: { $cond: [{ $in: ['$status', OPEN_STATUSES] }, '$amount', 0] } },
+        failedPush: { $sum: { $cond: [{ $eq: ['$pushStatus', 'failed'] }, 1, 0] } },
+      },
+    },
+  ]);
+  return {
+    total: row?.total ?? 0,
+    paid: row?.paid ?? 0,
+    outstanding: { count: row?.openCount ?? 0, amount: row?.openAmount ?? 0 },
+    failedPush: row?.failedPush ?? 0,
+  };
+}
+
+// One page of the invoices in scope, newest first, plus the summary for the stat cards.
+async function listInvoices(user, scope, { status, page, limit }) {
+  const scoped = scopeFilter(user, scope);
+  // only a known status string reaches the query (a repeated ?status= would arrive as an array)
+  const filter = { ...scoped, ...(Invoice.INVOICE_STATUSES.includes(status) && { status }) };
+  const query = Invoice.find(filter).sort({ createdAt: -1, _id: -1 }).populate('customerId', 'name outstandingBalance');
+  const [result, summary] = await Promise.all([paginate(query, Invoice, filter, { page, limit }), invoiceSummary(scoped)]);
+  return { ...result, summary };
 }
 
 async function getInvoice(user, scope, id) {

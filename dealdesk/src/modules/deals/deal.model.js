@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
-const DEAL_STATUSES = ['open', 'pending_approval', 'won'];
+const DEAL_STATUSES = ['open', 'pending_approval', 'won', 'lost'];
+// A fixed list, so the reasons can be counted and compared.
+const LOST_REASONS = ['price', 'competitor', 'no_budget', 'timing', 'no_response', 'other'];
 
 const itemSchema = new mongoose.Schema(
   {
@@ -25,12 +27,16 @@ const dealSchema = new mongoose.Schema(
     total: { type: Number, default: 0 },
     status: { type: String, enum: DEAL_STATUSES, default: 'open' },
     wonAt: Date,
+    closedAt: Date, // when it was won or lost; drives the analytics periods
+    lostReason: { type: String, enum: LOST_REASONS },
+    lostNotes: { type: String, trim: true, maxlength: 500 },
   },
   { timestamps: true },
 );
 
 dealSchema.index({ ownerId: 1, createdAt: -1 });
 dealSchema.index({ branchId: 1, createdAt: -1 });
+dealSchema.index({ status: 1, closedAt: -1 });
 
 dealSchema.pre('validate', function computeTotals() {
   this.subtotal = this.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
@@ -39,3 +45,4 @@ dealSchema.pre('validate', function computeTotals() {
 
 module.exports = mongoose.model('Deal', dealSchema);
 module.exports.DEAL_STATUSES = DEAL_STATUSES;
+module.exports.LOST_REASONS = LOST_REASONS;

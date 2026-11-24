@@ -1,13 +1,13 @@
 import { api } from '../../api/client';
 import useAsync from '../../hooks/useAsync';
-import { Modal, StatusBadge, Table } from '../../components/common';
+import { Drawer, StatusBadge, Table } from '../../components/common';
 import ApprovalSteps from '../../components/ApprovalSteps';
-import { formatDate } from '../../utils/format';
+import { formatDate, roleLabel } from '../../utils/format';
 
 const columns = [
   { key: 'step', header: 'Step', render: (h) => (h.step === 0 ? '–' : h.step) },
   { key: 'action', header: 'Action', render: (h) => <StatusBadge status={h.action} /> },
-  { key: 'approverRole', header: 'Role', render: (h) => h.approverRole.replace('_', ' ') },
+  { key: 'approverRole', header: 'Role', render: (h) => roleLabel(h.approverRole) },
   { key: 'by', header: 'By', render: (h) => h.approverId?.name },
   { key: 'remarks', header: 'Remarks', render: (h) => h.remarks || <span className="faint">–</span> },
   { key: 'timestamp', header: 'When', render: (h) => <span className="muted">{formatDate(h.timestamp)}</span> },
@@ -36,10 +36,10 @@ function HistoryBody({ dealId }) {
   );
 }
 
-export default function ApprovalHistoryModal({ deal, onClose }) {
+export default function ApprovalHistoryDrawer({ deal, onClose }) {
   return (
-    <Modal title={deal ? `Approval history · ${deal.title}` : ''} open={Boolean(deal)} onClose={onClose} size="lg">
+    <Drawer title="Approval history" subtitle={deal?.title} open={Boolean(deal)} onClose={onClose} size="lg">
       {deal && <HistoryBody dealId={deal._id} />}
-    </Modal>
+    </Drawer>
   );
 }

@@ -19,9 +19,14 @@ function toDeal(dealId, event, payload) {
   io?.to(rooms.deal(String(dealId))).emit(event, payload);
 }
 
-// System notifications share one event name and envelope: { type, data, at }.
-function notify(userId, type, data) {
-  toUser(userId, 'notification', { type, data, at: new Date().toISOString() });
+// System notifications share one event name and the stored shape: { id, type, data, at, read }.
+function notify(userId, notification) {
+  toUser(userId, 'notification', notification);
 }
 
-module.exports = { rooms, setIo, toUser, toDeal, notify };
+// Closes a user's open sockets; their next handshake is checked against the database again.
+function disconnectUser(userId) {
+  io?.in(rooms.user(String(userId))).disconnectSockets(true);
+}
+
+module.exports = { rooms, setIo, toUser, toDeal, notify, disconnectUser };

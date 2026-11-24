@@ -20,14 +20,20 @@ export class ApiError extends Error {
 
 async function request(method, path, body) {
   const token = tokenStore.get();
-  const res = await fetch(`${API_BASE}/api${path}`, {
-    method,
-    headers: {
-      ...(body !== undefined && { 'Content-Type': 'application/json' }),
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/api${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined && { 'Content-Type': 'application/json' }),
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // no response at all: offline, or the free-tier server is still starting up
+    throw new ApiError(0, 'Cannot reach the server. It may be starting up; please try again in a moment.');
+  }
 
   const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
@@ -42,4 +48,5 @@ export const api = {
   post: (path, body = {}) => request('POST', path, body),
   patch: (path, body) => request('PATCH', path, body),
   put: (path, body) => request('PUT', path, body),
+  delete: (path) => request('DELETE', path),
 };

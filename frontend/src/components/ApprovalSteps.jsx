@@ -1,4 +1,5 @@
 import { Badge } from './common';
+import { roleLabel } from '../utils/format';
 
 // Shows an approval chain: one row per step with its state. Used in the history modal and the chat side panel.
 export default function ApprovalSteps({ request }) {
@@ -11,7 +12,7 @@ export default function ApprovalSteps({ request }) {
         return (
           <div key={s.step} className="step">
             <span className={`step-no ${state}`}>{s.step}</span>
-            <span style={{ flex: 1, textTransform: 'capitalize' }}>{s.roleName.replace('_', ' ')}</span>
+            <span style={{ flex: 1 }}>{roleLabel(s.roleName)}</span>
             <Badge tone={{ approved: 'success', rejected: 'danger', pending: 'warning' }[state]}>
               {state === 'pending' ? 'awaiting decision' : state}
             </Badge>

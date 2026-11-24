@@ -9,12 +9,16 @@ router.use('/auth', require('./modules/auth/auth.routes'));
 // everything below requires a valid JWT
 router.use(authenticate);
 router.use('/roles', require('./modules/roles/role.routes'));
+router.use('/users', require('./modules/users/user.routes'));
 router.use('/customers', require('./modules/customers/customer.routes'));
 router.use('/products', require('./modules/products/product.routes'));
 router.use('/deals', require('./modules/deals/deal.routes'));
+router.use('/analytics', require('./modules/analytics/analytics.routes'));
 router.use('/approvals', approvalRouter);
 router.use('/approval-config', approvalConfigRouter);
 router.use('/invoices', require('./modules/invoices/invoice.routes').invoiceRouter);
+router.use('/integrations', require('./modules/invoices/integration.routes'));
 router.use('/threads', require('./modules/chat/chat.routes'));
+router.use('/notifications', require('./modules/notifications/notification.routes'));
 
 module.exports = router;

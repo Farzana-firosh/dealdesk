@@ -33,17 +33,30 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth:expired', logout);
   }, [logout]);
 
-  const login = useCallback(async (email, password) => {
-    const res = await api.post('/auth/login', { email, password });
-    tokenStore.set(res.token);
-    setUser(res.user);
-    setToken(res.token);
+  const startSession = useCallback(({ token: newToken, user: newUser }) => {
+    tokenStore.set(newToken);
+    setUser(newUser);
+    setToken(newToken);
   }, []);
+
+  const login = useCallback(
+    async (email, password) => startSession(await api.post('/auth/login', { email, password })),
+    [startSession],
+  );
+
+  // One-click demo sign-in (only offered when the API runs in demo mode).
+  const demoLogin = useCallback(
+    async (account) => startSession(await api.post('/auth/demo', { account })),
+    [startSession],
+  );
 
   // UI-only convenience; the backend enforces every permission again.
   const can = useCallback((key) => Boolean(user?.role.permissions.some((p) => p.key === key)), [user]);
 
-  const value = useMemo(() => ({ token, user, loading, login, logout, can }), [token, user, loading, login, logout, can]);
+  const value = useMemo(
+    () => ({ token, user, loading, login, demoLogin, logout, can }),
+    [token, user, loading, login, demoLogin, logout, can],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
