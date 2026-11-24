@@ -13,6 +13,7 @@ import InvoicesPage from './pages/InvoicesPage';
 import ApprovalRulesPage from './pages/ApprovalRulesPage';
 import UsersPage from './pages/users/UsersPage';
 import RolesPage from './pages/roles/RolesPage';
+import IntegrationsPage from './pages/IntegrationsPage';
 
 // Hides a route the user has no permission for. The API enforces the same rule.
 function Guard({ permission, children }) {
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/settings/users" element={<Guard permission="user.manage"><UsersPage /></Guard>} />
         <Route path="/settings/roles" element={<Guard permission="role.manage"><RolesPage /></Guard>} />
         <Route path="/settings/approvals" element={<Guard permission="approval_config.manage"><ApprovalRulesPage /></Guard>} />
+        <Route path="/settings/integrations" element={<Guard permission="integration.view"><IntegrationsPage /></Guard>} />
         <Route path="/no-access" element={<EmptyState icon="lock" title="No access yet">Your role has no permissions. Ask an administrator to give you access.</EmptyState>} />
         <Route path="*" element={<Home />} />
       </Route>

@@ -769,6 +769,52 @@ a.mini-row:hover { background: rgba(184, 208, 222, 0.18); }
 /* ---------- misc ---------- */
 pre.json { margin: 0; font-family: var(--mono); font-size: 12px; background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; white-space: pre-wrap; word-break: break-word; }
 
+/* ---------- integration health ---------- */
+/* summary strip: status + four numbers, divided by hairlines */
+.health-summary { display: grid; grid-template-columns: minmax(0, 1.7fr) repeat(4, minmax(0, 1fr)); margin-bottom: 14px; }
+.health-summary > * { padding: 16px 20px; min-width: 0; }
+.health-summary > * + * { border-left: 1px solid var(--border-soft); }
+.health-status { display: flex; align-items: flex-start; gap: 12px; }
+.health-status b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+.health-status-icon { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.health-status.is-ok .health-status-icon { background: var(--primary-soft); color: var(--slate); }
+.health-status.is-degraded .health-status-icon { background: var(--warning-soft); color: var(--warning); }
+.health-status.is-degraded b { color: var(--warning); }
+.health-metric { display: flex; flex-direction: column; gap: 4px; }
+.health-metric .stat-label { font-size: 11px; }
+.health-metric-value { font-size: 24px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; }
+
+/* three equal traffic cards */
+.health-traffic { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+.health-traffic .card-header, .health-failed .card-header { min-height: 46px; padding: 11px 18px; }
+.health-traffic .card-header .row { gap: 8px; color: var(--text); }
+.health-traffic .card-header svg { color: var(--steel); }
+.health-traffic .card-body { padding: 12px 18px 14px; }
+.health-lines { display: flex; flex-direction: column; gap: 9px; }
+.health-line { display: grid; grid-template-columns: minmax(0, 1fr) 84px 28px; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); }
+.health-line b { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.health-track { height: 6px; border-radius: 3px; background: #e7eff4; overflow: hidden; }
+.health-track span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--steel), var(--slate)); }
+.health-line.is-problem, .health-line.is-problem b { color: var(--danger); }
+.health-line.is-problem .health-track span { background: var(--danger); }
+
+.health-failed .card-header .row { gap: 8px; }
+.health-none { display: flex; align-items: center; gap: 8px; padding: 14px 18px; font-size: 13px; color: var(--text-muted); }
+.health-none svg { color: var(--steel); }
+
+@media (max-width: 1200px) {
+  .health-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .health-status { grid-column: 1 / -1; border-bottom: 1px solid var(--border-soft); }
+  .health-summary > .health-metric:nth-child(2) { border-left: 0; }
+}
+@media (max-width: 900px) { .health-traffic { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .health-summary { grid-template-columns: 1fr 1fr; }
+  .health-summary > .health-metric { border-left: 0; border-top: 1px solid var(--border-soft); }
+  .health-summary > .health-metric:nth-child(odd) { border-left: 1px solid var(--border-soft); }
+  .health-summary > * { padding: 12px 14px; }
+}
+
 /* ---------- approval rules ---------- */
 .band-tone-0 { --tone: var(--mist); --tone-text: var(--ink); }
 .band-tone-1 { --tone: var(--steel); --tone-text: #fff; }

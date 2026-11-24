@@ -31,6 +31,14 @@ const MIGRATIONS = [
         { updatePipeline: true },
       ),
   },
+  {
+    id: '2026-11-24-admin-integration-view',
+    up: () =>
+      Role.updateOne(
+        { name: 'admin', 'permissions.key': { $ne: 'integration.view' } },
+        { $push: { permissions: { key: 'integration.view', scope: 'all' } } },
+      ),
+  },
 ];
 
 async function runMigrations() {

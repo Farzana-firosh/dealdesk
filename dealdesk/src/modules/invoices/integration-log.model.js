@@ -18,4 +18,7 @@ const integrationLogSchema = new mongoose.Schema(
   { timestamps: { createdAt: true, updatedAt: false }, versionKey: false },
 );
 
+// Logs are for troubleshooting, not a permanent record: MongoDB removes them after 90 days.
+integrationLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
+
 module.exports = mongoose.model('IntegrationLog', integrationLogSchema, 'integration_logs');

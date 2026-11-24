@@ -3,7 +3,7 @@
 export const GROUPS = [
   { id: 'deals', label: 'Deals', icon: 'deals', keys: ['deal.view', 'deal.edit'] },
   { id: 'approvals', label: 'Approvals', icon: 'approvals', keys: ['discount.approve', 'approval_config.manage'] },
-  { id: 'invoices', label: 'Invoices', icon: 'invoices', keys: ['invoice.view', 'invoice.issue', 'invoice.cancel'] },
+  { id: 'invoices', label: 'Invoices', icon: 'invoices', keys: ['invoice.view', 'invoice.issue', 'invoice.cancel', 'integration.view'] },
   { id: 'chat', label: 'Chat', icon: 'chat', keys: ['chat.send'] },
   { id: 'admin', label: 'Administration', icon: 'shield', keys: ['user.manage', 'role.manage'] },
 ];
@@ -16,6 +16,7 @@ export const NAMES = {
   'invoice.view': 'View invoices',
   'invoice.issue': 'Issue invoices',
   'invoice.cancel': 'Cancel invoices',
+  'integration.view': 'Integration health',
   'chat.send': 'Deal chat',
   'user.manage': 'Manage users',
   'role.manage': 'Manage roles',

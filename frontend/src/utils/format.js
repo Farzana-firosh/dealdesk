@@ -4,6 +4,16 @@ export const formatMoney = (n) => (n == null ? '–' : money.format(n));
 
 export const formatDate = (d) => (d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '–');
 
+// "just now", "12 min ago", "3 h ago", then the date
+export const timeAgo = (d) => {
+  if (!d) return '–';
+  const min = Math.round((Date.now() - new Date(d)) / 60_000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  if (min < 24 * 60) return `${Math.round(min / 60)} h ago`;
+  return formatDate(d);
+};
+
 // "1 deal", "3 deals"
 export const countOf = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
 

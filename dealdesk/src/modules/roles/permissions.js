@@ -7,6 +7,7 @@ const PERMISSIONS = {
   'invoice.view': 'View invoices and their integration logs',
   'invoice.issue': 'Convert won deals into sales and invoices',
   'invoice.cancel': 'Cancel invoices',
+  'integration.view': 'View BillPort integration health across all invoices',
   'chat.send': 'Read and send messages in deal threads',
   'role.manage': 'Manage roles and their permissions',
   'user.manage': 'Add users, change their role, branch or manager, reset passwords, deactivate',

@@ -17,6 +17,7 @@ router.use('/analytics', require('./modules/analytics/analytics.routes'));
 router.use('/approvals', approvalRouter);
 router.use('/approval-config', approvalConfigRouter);
 router.use('/invoices', require('./modules/invoices/invoice.routes').invoiceRouter);
+router.use('/integrations', require('./modules/invoices/integration.routes'));
 router.use('/threads', require('./modules/chat/chat.routes'));
 router.use('/notifications', require('./modules/notifications/notification.routes'));
 

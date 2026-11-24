@@ -38,4 +38,4 @@ invoiceSchema.index({ ownerId: 1 });
 invoiceSchema.index({ branchId: 1 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);
-Object.assign(module.exports, { INVOICE_STATUSES, FINAL_STATUSES });
+Object.assign(module.exports, { INVOICE_STATUSES, FINAL_STATUSES, PUSH_STATUSES });
