@@ -1,12 +1,13 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { formatMoney } from '../../utils/format';
 
-// Deals won and lost per month: two series, one count axis.
+// Deals won and lost per month: two series, one count axis. Brand blues, dark vs light, so the
+// pair stays distinguishable without leaning on red/green.
 const SERIES = [
-  { key: 'won', label: 'Won', color: 'var(--success)' },
-  { key: 'lost', label: 'Lost', color: 'var(--danger)' },
+  { key: 'won', label: 'Won', color: 'var(--slate)' },
+  { key: 'lost', label: 'Lost', color: 'var(--steel)' },
 ];
-const H = 200;
+const H = 170;
 const PAD = { top: 8, right: 4, bottom: 24, left: 28 };
 const PLOT_H = H - PAD.top - PAD.bottom;
 const TOOLTIP_W = 180; // matches .chart-tooltip width; keeps it inside the plot on a phone

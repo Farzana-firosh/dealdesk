@@ -10,7 +10,7 @@ import Ring from './Ring';
 import { ApprovalsArt, ChatArt, DealsArt, InvoicesArt, NewDealArt } from './Illustrations';
 
 const OPEN_INVOICE = ['pending', 'sent', 'viewed'];
-const RECENT = 5;
+const RECENT = 4;
 
 // Everything the dashboard shows, fetched together; sections the role cannot see are skipped.
 async function loadDashboard(can) {
@@ -162,7 +162,7 @@ export default function DashboardPage() {
 
         <div className="bento-rings">
           <div className="card ring-card">
-            <Ring value={summary.winRate} label="Win rate" color="var(--success)" />
+            <Ring value={summary.winRate} label="Win rate" color="var(--slate)" />
             <div>
               <div className="ring-title">Win rate</div>
               <div className="cell-sub">{closed ? `${sum('won')} won · ${sum('lost')} lost` : 'No deals closed yet'}</div>

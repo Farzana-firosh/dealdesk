@@ -1,5 +1,5 @@
 /** A single-value progress ring: `value` 0–100, or null for "no data yet". */
-export default function Ring({ value, label, color = 'var(--slate)', size = 76 }) {
+export default function Ring({ value, label, color = 'var(--slate)', size = 64 }) {
   const r = 30;
   const c = 2 * Math.PI * r;
   const pct = value === null ? 0 : Math.max(0, Math.min(100, value));
