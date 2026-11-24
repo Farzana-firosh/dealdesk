@@ -55,6 +55,14 @@ describe('approval chain resolution (seeded bands)', () => {
     assert.deepEqual(after.steps.map((s) => s.roleName), ['finance']);
   });
 
+  test('the config comes with the role names a step may use', async () => {
+    const { as } = await loginAll();
+    const res = await as('admin').get('/api/approval-config');
+    assert.equal(res.status, 200);
+    assert.ok(res.body.roles.includes('finance'));
+    assert.ok(res.body.roles.includes('sales_manager'));
+  });
+
   test('bands with a gap are rejected', async () => {
     const { as } = await loginAll();
     const res = await as('admin').put('/api/approval-config', {
