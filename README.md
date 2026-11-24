@@ -10,6 +10,12 @@ DealDesk is a backend for deals, discount approvals, realtime deal chat and invo
 
 Stack: Node.js 20+, Express 5, MongoDB 7 with Mongoose, JWT and bcrypt (`bcryptjs`), Socket.IO, Joi. The code is plain JavaScript (CommonJS) so the solution stays small and readable within the time box.
 
+| Dashboard | Deal chat |
+|---|---|
+| ![Dashboard: greeting, shortcuts, attention list, won/lost chart, win rate and open pipeline](docs/screenshots/dashboard.png) | ![Deal chat: thread list, conversation and deal details side panel](docs/screenshots/deal-chat.png) |
+| **Integration health** | **Sign in** |
+| ![BillPort integration health: status, push queue, traffic and failed pushes](docs/screenshots/integration-health.png) | ![Sign-in page with demo personas and the container ship scene](docs/screenshots/login.png) |
+
 **This README answers:**
 
 1. [How to run both apps](#1-how-to-run-both-apps)
@@ -42,7 +48,7 @@ cd frontend && npm install && npm run dev                              # termina
 ```
 
 - **Demo UI:** http://localhost:5173. Vite proxies `/api` and `/socket.io` to the API, so no CORS setup is needed. The login is stored per tab, so you can open several tabs and log in as a different user in each.
-- **Automated tests:** `cd dealdesk && npm test`. 69 tests (Node's built-in test runner, Supertest, and an in-memory MongoDB from mongodb-memory-server) cover authentication, RBAC and data scope, approval chains and races, exactly-once conversion, the push worker against a stubbed BillPort, webhooks and reconciliation, security headers, rate limits and log redaction. No database or running services needed. `npm run lint` runs ESLint. GitHub Actions runs both, plus the BillPort syntax check and the frontend build, on every pull request (`.github/workflows/ci.yml`). It is CI only; Render still deploys.
+- **Automated tests:** `cd dealdesk && npm test`. 110 tests (Node's built-in test runner, Supertest, and an in-memory MongoDB from mongodb-memory-server) cover authentication, RBAC and data scope, user and role management without escalation, approval chains and races, exactly-once conversion, the push worker against a stubbed BillPort, webhooks and reconciliation, integration health, pagination, notifications, lost deals and analytics, security headers, rate limits and log redaction. No database or running services needed. `npm run lint` runs ESLint. GitHub Actions runs both, plus the BillPort syntax check and the frontend build, on every pull request (`.github/workflows/ci.yml`). It is CI only; Render still deploys.
 - **Postman:** import `postman/DealDesk.postman_collection.json`, run `npm run seed`, then run folders 0–8 in order. Every request asserts its expected result. The full run is 88 requests and 115 assertions, all passing locally and against Docker.
 
 **Seed users** (password `Password123!`, all `@dealdesk.test`):
@@ -105,9 +111,9 @@ dealdesk/src
 frontend/src
 ├── api/               fetch wrapper (JWT header, per-tab token)
 ├── context/           Auth, Socket (one connection, useSocketEvent hook), Toast
-├── components/common/ reusable Button, Input, Select, TextArea, Card, StatCard, Badge, Table, Modal/Drawer, Avatar, Icon …
+├── components/common/ reusable Button, Input, Select, TextArea, Card, StatCard, Badge, Table, Pagination, Modal/Drawer, Avatar, Icon …
 ├── components/layout/ nav config (one list for sidebar, titles and landing page), collapsible sidebar, top bar, notification bell
-└── pages/             dashboard/, deals/, chat/, users/, roles/, approvals, invoices, approval rules, login
+└── pages/             dashboard/, deals/, chat/, users/, roles/, login/, approvals, invoices, approval rules, integration health
 ```
 **UI.** One stylesheet (`styles/global.css`) with design tokens for a five-colour palette (ink, slate, steel, mist, cloud) and Helvetica Neue (Inter where it is not installed).
 - A fixed header carries the brand, live status, notifications and the profile menu (sign out). Below it, a floating sidebar collapses to an icon rail (remembered per browser) and becomes a drawer on phones that closes itself on navigation.
@@ -125,7 +131,7 @@ Controllers stay thin and the business rules live in the services. The UI only *
 ```js
 { name: 'sales_manager', permissions: [ { key: 'deal.view', scope: 'branch' }, { key: 'discount.approve', scope: 'branch' }, ... ] }
 ```
-- Permission keys (`deal.view`, `deal.edit`, `discount.approve`, `invoice.view`, `invoice.issue`, `invoice.cancel`, `chat.send`, `role.manage`, `user.manage`, `approval_config.manage`) are defined in code (`modules/roles/permissions.js`), because the code is what checks them.
+- Permission keys (`deal.view`, `deal.edit`, `discount.approve`, `invoice.view`, `invoice.issue`, `invoice.cancel`, `integration.view`, `chat.send`, `role.manage`, `user.manage`, `approval_config.manage`) are defined in code (`modules/roles/permissions.js`), because the code is what checks them.
 - Role names never appear in business logic. Adding a role is a `POST /api/roles` call, with no code change.
 - The JWT holds only the user id. User and role are reloaded on every request, so a permission change takes effect immediately.
 
@@ -140,7 +146,7 @@ Controllers stay thin and the business rules live in the services. The UI only *
 - Only unused custom roles can be deleted: not built-in ones, not one any user has, and not one the approval rules or an open request use.
 - Role names are lowercase letters, numbers and `_` (they are typed into the approval rules), fixed once created.
 
-**Migrations.** The hosted database is never reseeded, so data changes for existing databases are steps in `src/database/migrate.js`. They run at start-up (or `npm run migrate`), each one once, recorded in the `migrations` collection, and each written so that running it again changes nothing. The first one gives the existing `admin` role `user.manage`.
+**Migrations.** The hosted database is never reseeded, so data changes for existing databases are steps in `src/database/migrate.js`. They run at start-up (or `npm run migrate`), each one once, recorded in the `migrations` collection, and each written so that running it again changes nothing. Admin always holds every permission, so each new permission key comes with a step that gives it to the existing `admin` role (`user.manage`, then `integration.view`); another backfilled `closedAt` on won deals.
 
 **One guard.** Every protected route uses `authorize('<permission>')` (`modules/auth/auth.middleware.js`). It returns 403 if the user's role lacks the permission. Otherwise it sets `req.scope` to `own`, `branch` or `all`.
 
@@ -170,6 +176,7 @@ Scenario 01: exec A asking for a Branch B deal by id gets **404**, while finance
 - Admins edit it with `PUT /api/approval-config` (permission `approval_config.manage`), sending role **names**.
 - The service stores role **ids**, so renaming a role doesn't break the chain.
 - The bands are validated: they must cover 0–100 with no gaps or overlaps, and every role must exist. A `version` field increments on each edit.
+- **The Approval rules screen** shows the bands as a 0–100% bar, and each band's steps as ordered role chips picked from the real roles, so a role name can't be mistyped. Gaps, overlaps and from/to mistakes are shown before saving, and Save stays disabled until they're fixed; the API checks everything again. `GET /api/approval-config` also returns the role names a step may use, so the screen needs only `approval_config.manage`, not `role.manage`.
 
 **Runtime resolution.**
 - `resolveChain(pct)` reads the config from MongoDB **on every discount request**. It doesn't cache and doesn't use an if-else ladder, so edits apply at once without a restart (scenario 03).
@@ -235,7 +242,12 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 
 **Self-healing.**
 - The reconciliation job runs every 20 s. It finds pushed invoices in a non-final status that haven't changed for **N minutes** (`RECONCILE_STALE_MINUTES`, default 1), calls `GET /billing/invoices/:externalId`, and applies the result through the same forward-only rule (scenario 09).
-- `integration_logs` records every push attempt, every inbound webhook (applied, duplicate, stale, rejected), and every reconciliation. Each record has its payload, response, outcome and duration, and they're available via `GET /api/invoices/:id/logs`.
+- `integration_logs` records every push attempt, every inbound webhook (applied, duplicate, stale, rejected), and every reconciliation. Each record has its payload, response, outcome and duration, and they're available via `GET /api/invoices/:id/logs`. A TTL index removes them after 90 days: they are for troubleshooting, not a permanent record.
+- **Integration health** (`GET /api/integrations/health`, permission `integration.view`, the Integration health screen) answers "is the BillPort link working?" across every invoice. The numbers cover all branches, so it has its own permission rather than `invoice.view`'s scopes. It shows:
+  - the push queue now (queued, retrying, failed) and the invoices that gave up, each with a retry button
+  - the last 24 hours: push success rate and average time, webhooks by outcome, reconciliation results
+  - webhooks still waiting to be processed, and invoices waiting for reconciliation
+  - an overall `ok` / `degraded` status with plain-language reasons (a failed push, push success under 80%, rejected webhooks, failed lookups)
 
 ### BillPort misbehaviour (built as specified)
 - `POST /billing/invoices`: 15% respond 503, and 10% respond after 6 s.
@@ -264,9 +276,9 @@ PAID (seq 3) followed by a late VIEWED (seq 2) leaves the invoice **paid**, and 
 1. ~~An automated test suite run in CI.~~ Done: see *Automated tests* above.
 2. ~~A persisted `notifications` collection, with a read API and replay on reconnect.~~ Done: see *Realtime chat and notifications*.
 3. A MongoDB replica set and transactions for convert and for discount requests. A transactional outbox for domain events.
-4. An integration-log retention policy (TTL index) and a small admin view of failed pushes, with bulk retry.
+4. ~~An integration-log retention policy (TTL index) and a small admin view of failed pushes.~~ Done: see *Self-healing* in section 5. Bulk retry is still open.
 5. ~~Rate limiting on login and webhooks, plus Helmet and structured logging (pino) with a request id.~~ Done: see *Security and logging*.
-6. Pagination on the list endpoints and a TypeScript migration.
+6. ~~Pagination on the list endpoints.~~ Done for deals and invoices: see *API overview*. A TypeScript migration is still open.
 
 ---
 
@@ -328,11 +340,14 @@ All `/api` routes except login require `Authorization: Bearer <token>`.
 | Approvals | `GET /api/approvals/pending`, `POST /api/approvals/:id/approve`, `POST /api/approvals/:id/reject` |
 | Approval config (admin) | `GET/PUT /api/approval-config` |
 | Invoices | `GET /api/invoices`, `GET /api/invoices/:id`, `GET /api/invoices/:id/logs`, `POST /api/invoices/:id/retry-push`, `POST /api/invoices/:id/cancel` |
+| Integrations | `GET /api/integrations/health` |
 | Chat | `GET /api/threads`, `GET/POST /api/threads/:dealId/messages`, `POST /api/threads/:dealId/read` |
 | Notifications | `GET /api/notifications`, `POST /api/notifications/read` |
 | Webhook | `POST /webhooks/billport` (HMAC-signed, no JWT) |
 | BillPort | `POST /billing/invoices`, `GET /billing/invoices/:externalId`, `GET/POST /admin/chaos`, `GET /admin/invoices`, `GET /admin/deliveries` |
 | Socket events | client → `thread:join`, `thread:leave`, `chat:send`, `chat:typing` · server → `chat:message`, `chat:typing`, `thread:updated`, `notification` |
+
+**Pagination.** `GET /api/deals` and `GET /api/invoices` take `?page=` and `?limit=` (default 20, at most 100; invalid values fall back to the defaults) and return newest first. Responses keep their original fields (`deals` / `invoices`, `count` for the rows on this page, `scope` on deals) and add `page`, `limit`, `total` and `pages`. The invoice list also returns a `summary` (total, paid, outstanding count and amount, failed pushes) over every invoice in scope, so the stat cards stay right whatever page is shown.
 
 ---
 
